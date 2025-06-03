@@ -1,0 +1,102 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #e8f5e9; /* Soft green background */
+}
+
+h1 {
+    margin: 20px 0;
+    font-size: 2rem;
+    color: #2e7d32; /* Dark green text */
+}
+
+.board {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #a5d6a7; /* Light green header */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #1b5e20; /* Darker green text */
+}
+
+#add-task-button {
+    background-color: #66bb6a; /* Green button */
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+#add-task-button:hover {
+    background-color: #43a047; /* Darker green hover */
+}
+
+.column {
+    background-color: #c8e6c9; /* Soft green column */
+    border: 1px solid #81c784; /* Green border */
+    border-radius: 8px; /* Rounded corners */
+    width: 250px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.task-container {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.task {
+    margin: 5px auto;
+    padding: 10px;
+    width: calc(100% - 30px);
+    background-color: #66bb6a; /* Green task */
+    color: #ffffff;
+    border-radius: 5px;
+    cursor: grab;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.task:active {
+    transform: scale(1.05);
+}
+
+.task {
+    background-color: #4a90e2;
+    color: #ffffff;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: grab;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.task:active {
+    transform: scale(1.05);
+}

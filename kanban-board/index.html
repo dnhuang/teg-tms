@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Kanban Board</h1>
+    <div class="board">
+        <div class="column" id="todo">
+            <div class="header">
+                <h2>To Do</h2>
+                <button id="add-task-button">Add Task</button>
+            </div>
+            <div class="task-container">
+                <!-- Tasks will be dynamically added here -->
+            </div>
+        </div>
+        <div class="column" id="in-review">
+            <div class="header">
+                <h2>In Review</h2>
+            </div>
+            <div class="task-container"></div>
+        </div>
+        <div class="column" id="waiting-for-documents">
+            <div class="header">
+                <h2>Waiting for Documents</h2>
+            </div>
+            <div class="task-container"></div>
+        </div>
+        <div class="column" id="done">
+            <div class="header">
+                <h2>Done</h2>
+            </div>
+            <div class="task-container"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
