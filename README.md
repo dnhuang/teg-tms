@@ -27,6 +27,3 @@
    ```bash
    uv run
    ```
-
-## Notes
-- Ensure `.venv` is excluded from version control by adding it to `.gitignore`.
