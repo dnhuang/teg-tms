@@ -5,6 +5,7 @@ let taskHistory = [];
 let historyIndex = -1;
 let dragPlaceholder = null;
 let draggedElement = null;
+let originalColumn = null;
 
 // API configuration
 const API_BASE = 'http://localhost:8000/api/v1';
@@ -467,6 +468,7 @@ function handleDragStart(e) {
     }
     
     draggedElement = e.target;
+    originalColumn = e.target.closest('.column');
     e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
     e.target.style.opacity = '0.5';
     
@@ -477,6 +479,7 @@ function handleDragStart(e) {
 function handleDragEnd(e) {
     e.target.style.opacity = '1';
     draggedElement = null;
+    originalColumn = null;
     
     // Clean up placeholder
     removeDragPlaceholder();
@@ -497,7 +500,10 @@ function createDragPlaceholder(originalElement) {
     const cleanPlaceholder = dragPlaceholder.cloneNode(true);
     dragPlaceholder = cleanPlaceholder;
     
-    // Initially place it in the original column
+    // Initially hide the placeholder since we don't want it in the original column
+    dragPlaceholder.style.display = 'none';
+    
+    // Place it in the original column but hidden
     const originalContainer = originalElement.closest('.task-container');
     if (originalContainer) {
         originalContainer.appendChild(dragPlaceholder);
@@ -514,9 +520,22 @@ function removeDragPlaceholder() {
 function movePlaceholderToColumn(targetColumn) {
     if (!dragPlaceholder || !targetColumn) return;
     
+    // Don't show placeholder in the original column
+    if (originalColumn && targetColumn === originalColumn) {
+        // Hide the placeholder instead of removing it
+        dragPlaceholder.style.display = 'none';
+        return;
+    }
+    
+    // Show the placeholder if it was hidden
+    dragPlaceholder.style.display = 'block';
+    
     const targetContainer = targetColumn.querySelector('.task-container');
-    if (targetContainer && targetContainer !== dragPlaceholder.parentNode) {
-        targetContainer.appendChild(dragPlaceholder);
+    if (targetContainer) {
+        // If placeholder is not in DOM yet, or in a different container, move it
+        if (!dragPlaceholder.parentNode || targetContainer !== dragPlaceholder.parentNode) {
+            targetContainer.appendChild(dragPlaceholder);
+        }
     }
 }
 
