@@ -12,7 +12,7 @@
         <div class="overlay-content">
             <h2>Configure Task</h2>
             <form id="add-task-form">
-                <label for="client-name">Client Name:</label>
+                <label for="client-name">Client:</label>
                 <input type="text" id="client-name" name="client-name" required>
                 
                 <label>Type:</label>
@@ -29,10 +29,16 @@
                         <div class="type-box" data-type="Misc">Misc</div>
                     </div>
                 </div>
-                
+
                 <div id="misc-input-container" style="display: none;">
                     <label for="misc-type">Misc Type:</label>
                     <input type="text" id="misc-type" name="misc-type" placeholder="Enter custom type">
+                </div>
+
+                <label>Processing:</label>
+                <div class="processing-options">
+                    <div class="processing-box" data-processing="normal">Normal</div>
+                    <div class="processing-box" data-processing="expedited">Expedited</div>
                 </div>
                 
                 <div class="form-buttons">
@@ -88,6 +94,7 @@
         <div class="column" id="done">
             <div class="header">
                 <h2>Done</h2>
+                <button id="clear-done-button">Clear</button>
             </div>
             <div class="task-container"></div>
         </div>

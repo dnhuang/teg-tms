@@ -21,6 +21,7 @@ const restoredTasks = [];
 const columns = document.querySelectorAll('.column');
 const undoButton = document.getElementById('undo-button');
 const redoButton = document.getElementById('redo-button');
+const clearDoneButton = document.getElementById('clear-done-button');
 
 // Update history button states
 function updateHistoryButtons() {
@@ -39,8 +40,14 @@ const columnContainers = {
     'done': document.querySelector('#done .task-container')
 };
 
-// Load all tasks from localStorage (including previously saved ones)
-const allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
+// Load and normalize all tasks from localStorage
+let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
+// Add createdAt to any existing tasks that don't have it
+allTasks = allTasks.map(task => ({
+    ...task,
+    createdAt: task.createdAt || Date.now()
+}));
+localStorage.setItem('allTasks', JSON.stringify(allTasks));
 
 // Clear all task containers (optional, if your HTML is not empty on load)
 Object.values(columnContainers).forEach(container => container.innerHTML = '');
@@ -74,7 +81,7 @@ columns.forEach(column => {
     });
 
     // When drop occurs, update task status in localStorage
-    column.addEventListener('drop', () => {
+    column.addEventListener('drop', (event) => {
         const draggingTask = document.querySelector('.dragging');
         if (!draggingTask) return;
 
@@ -93,7 +100,16 @@ columns.forEach(column => {
         // Find and update the dragged task's status
         const taskIndex = allTasks.findIndex(task => task.id === taskId);
         if (taskIndex !== -1) {
-            allTasks[taskIndex].status = newStatus;
+            const targetContainer = column.querySelector('.task-container');
+            const draggedTask = allTasks[taskIndex];
+            draggedTask.status = newStatus;
+            
+            // Remove task card from DOM
+            draggingTask.remove();
+            
+            // Re-add it to maintain priority order
+            addTaskCard(draggedTask, targetContainer);
+            
             localStorage.setItem('allTasks', JSON.stringify(allTasks));
         }
     });
@@ -111,6 +127,7 @@ const miscInputContainer = document.getElementById('misc-input-container');
 const miscTypeInput = document.getElementById('misc-type');
 
 let selectedType = null;
+let selectedProcessing = 'normal'; // Default to normal processing
 let customMiscType = '';
 
 // Show/Hide Panel
@@ -135,7 +152,12 @@ function showTaskPanel(taskData = null) {
         clientNameInput.value = '';
         selectedType = null;
         miscTypeInput.value = '';
+        selectedProcessing = 'normal';
         typeOptions.forEach(opt => opt.classList.remove('selected'));
+        document.querySelectorAll('.processing-box').forEach(box => {
+            box.classList.remove('selected');
+        });
+        document.querySelector('.processing-box[data-processing="normal"]').classList.add('selected');
         miscInputContainer.style.display = 'none';
     }
 }
@@ -151,7 +173,7 @@ addTaskButton.addEventListener('click', () => showTaskPanel());
 // Cancel Button Click
 cancelButton.addEventListener('click', hideTaskPanel);
 
-// Type Selection
+// Type and Processing Selection
 typeOptions.forEach(option => {
     option.addEventListener('click', () => {
         typeOptions.forEach(opt => opt.classList.remove('selected'));
@@ -168,6 +190,15 @@ typeOptions.forEach(option => {
     });
 });
 
+// Processing type selection
+document.querySelectorAll('.processing-box').forEach(box => {
+    box.addEventListener('click', () => {
+        document.querySelectorAll('.processing-box').forEach(b => b.classList.remove('selected'));
+        box.classList.add('selected');
+        selectedProcessing = box.dataset.processing;
+    });
+});
+
 // Track Misc type input
 miscTypeInput.addEventListener('input', (e) => {
     customMiscType = e.target.value.trim();
@@ -178,7 +209,7 @@ submitButton.addEventListener('click', (event) => {
     event.preventDefault();
     const clientName = clientNameInput.value.trim();
 
-    if (clientName && selectedType && (selectedType !== 'Misc' || customMiscType)) {
+    if (clientName && selectedType) {
         const existingTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
         
         if (editingTaskId) {
@@ -188,7 +219,8 @@ submitButton.addEventListener('click', (event) => {
                 const updatedTask = {
                     ...existingTasks[taskIndex],
                     clientName,
-                    type: selectedType === 'Misc' ? `Misc - ${customMiscType}` : selectedType
+                    type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
+                    processing: selectedProcessing
                 };
                 existingTasks[taskIndex] = updatedTask;
                 
@@ -205,8 +237,10 @@ submitButton.addEventListener('click', (event) => {
             const newTask = {
                 id: crypto.randomUUID(),
                 clientName,
-                type: selectedType === 'Misc' ? `Misc - ${customMiscType}` : selectedType,
-                status: 'todo'
+                type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
+                processing: selectedProcessing,
+                status: 'todo',
+                createdAt: Date.now()
             };
             existingTasks.push(newTask);
             
@@ -221,7 +255,7 @@ submitButton.addEventListener('click', (event) => {
         // Hide the panel
         hideTaskPanel();
     } else {
-        alert('Please enter a client name and select a task type.');
+        alert('Please enter a client name and type.');
     }
 });
 
@@ -241,6 +275,33 @@ function addTaskCard(taskData, container) {
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         showTaskPanel(taskData);
+    });
+    
+    // Clear Done Column
+    clearDoneButton.addEventListener('click', () => {
+        // Get all tasks from localStorage
+        let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
+        
+        // Find all tasks in the Done column
+        const doneTasks = allTasks.filter(task => task.status === 'done');
+        
+        // Store tasks in delete history
+        doneTasks.forEach(task => {
+            deletedTasks.push({...task});
+        });
+        
+        // Remove Done tasks from localStorage
+        allTasks = allTasks.filter(task => task.status !== 'done');
+        localStorage.setItem('allTasks', JSON.stringify(allTasks));
+        
+        // Clear the Done column in UI
+        columnContainers['done'].innerHTML = '';
+        
+        // Clear redo history when a new action is performed
+        restoredTasks.length = 0;
+        
+        // Update history buttons
+        updateHistoryButtons();
     });
 
     // Create delete button
@@ -274,7 +335,11 @@ function addTaskCard(taskData, container) {
     });
 
     // Card content
-    newCard.innerHTML = `<h3>${taskData.clientName}</h3><span>${taskData.type}</span>`;
+    newCard.innerHTML = `
+        <h3 class="task-client">${taskData.clientName}</h3>
+        <span class="task-type" data-type="${taskData.type.split(' - ')[0]}">${taskData.type}</span>
+        ${taskData.processing === 'expedited' ? '<span class="task-expedited">expedited</span>' : ''}
+    `;
     newCard.appendChild(editBtn);
     newCard.appendChild(deleteBtn);
 
@@ -286,7 +351,25 @@ function addTaskCard(taskData, container) {
         newCard.classList.remove('dragging');
     });
 
-    container.appendChild(newCard);
+    // Insert card in correct position based on priority
+    const existingCards = Array.from(container.children);
+    const insertIndex = existingCards.findIndex(card => {
+        const cardTask = JSON.parse(localStorage.getItem('allTasks')).find(t => t.id === card.dataset.id);
+        if (!cardTask) return true; // Place at end if task not found
+        
+        // Expedited tasks come before normal tasks
+        if (taskData.processing === 'expedited' && cardTask.processing !== 'expedited') return true;
+        if (taskData.processing !== 'expedited' && cardTask.processing === 'expedited') return false;
+        
+        // Within same processing type, sort by creation time (FIFO)
+        return taskData.createdAt < cardTask.createdAt;
+    });
+
+    if (insertIndex === -1) {
+        container.appendChild(newCard);
+    } else {
+        container.insertBefore(newCard, existingCards[insertIndex]);
+    }
 }
 
 // Undo delete
