@@ -1,434 +1,996 @@
-// Theme management
-const themeToggle = document.getElementById('theme-toggle');
+// Global variables
+let currentUser = null;
+let authToken = localStorage.getItem('auth_token');
+let taskHistory = [];
+let historyIndex = -1;
+let dragPlaceholder = null;
+let draggedElement = null;
 
-// Load saved theme preference
-const savedTheme = localStorage.getItem('theme') || 'light';
-document.documentElement.setAttribute('data-theme', savedTheme);
-themeToggle.checked = savedTheme === 'dark';
+// API configuration
+const API_BASE = 'http://localhost:8000/api/v1';
 
-// Handle theme toggle
-themeToggle.addEventListener('change', () => {
-    const newTheme = themeToggle.checked ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
+// DOM elements will be set after DOM loads
+let loginContainer, appContainer, addTaskPanel;
+
+// Initialize the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
 });
 
-// History tracking
-const deletedTasks = [];
-const restoredTasks = [];
+async function initializeApp() {
+    // Get DOM elements
+    loginContainer = document.getElementById('login-container');
+    appContainer = document.getElementById('app-container');
+    addTaskPanel = document.getElementById('add-task-panel');
 
-// Get DOM elements
-const columns = document.querySelectorAll('.column');
-const undoButton = document.getElementById('undo-button');
-const redoButton = document.getElementById('redo-button');
-const clearDoneButton = document.getElementById('clear-done-button');
+    // Check if user is already logged in
+    if (authToken) {
+        const user = await getCurrentUser();
+        if (user) {
+            currentUser = user;
+            showApp();
+        } else {
+            showLogin();
+        }
+    } else {
+        showLogin();
+    }
 
-// Update history button states
-function updateHistoryButtons() {
-    undoButton.disabled = deletedTasks.length === 0;
-    redoButton.disabled = restoredTasks.length === 0;
+    // Set up event listeners
+    setupEventListeners();
 }
 
-// Initialize button states
-updateHistoryButtons();
-
-// Create a map from status to container elements
-const columnContainers = {
-    'todo': document.querySelector('#todo .task-container'),
-    'in-review': document.querySelector('#in-review .task-container'),
-    'awaiting-documents': document.querySelector('#awaiting-documents .task-container'),
-    'done': document.querySelector('#done .task-container')
-};
-
-// Load and normalize all tasks from localStorage
-let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-// Add createdAt to any existing tasks that don't have it
-allTasks = allTasks.map(task => ({
-    ...task,
-    createdAt: task.createdAt || Date.now()
-}));
-localStorage.setItem('allTasks', JSON.stringify(allTasks));
-
-// Clear all task containers (optional, if your HTML is not empty on load)
-Object.values(columnContainers).forEach(container => container.innerHTML = '');
-
-// Track tasks by ID to avoid duplicates
-const uniqueTasks = new Map();
-
-allTasks.forEach(taskData => {
-    if (!uniqueTasks.has(taskData.id)) {
-        uniqueTasks.set(taskData.id, taskData);
-
-        // Find the right container based on task status, default to todo if missing/invalid
-        const container = columnContainers[taskData.status] || columnContainers['todo'];
-
-        addTaskCard(taskData, container);
+function setupEventListeners() {
+    // Login form
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
     }
-});
 
-// Drag and drop handlers
-columns.forEach(column => {
-    // Allow dragging over column
-    column.addEventListener('dragover', event => {
-        event.preventDefault();
-        const draggingTask = document.querySelector('.dragging');
-        const afterElement = getDragAfterElement(column, event.clientY);
-        if (afterElement == null) {
-            column.querySelector('.task-container').appendChild(draggingTask);
-        } else {
-            column.querySelector('.task-container').insertBefore(draggingTask, afterElement);
-        }
-    });
+    // Logout button
+    const logoutButton = document.getElementById('logout-button');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', handleLogout);
+    }
 
-    // When drop occurs, update task status in localStorage
-    column.addEventListener('drop', (event) => {
-        const draggingTask = document.querySelector('.dragging');
-        if (!draggingTask) return;
-
-        const taskId = draggingTask.dataset.id;
-        if (!taskId) return;
-
-        const newStatus = column.id;
-
-        // Clear redo history when a new action is performed
-        restoredTasks.length = 0;
-        updateHistoryButtons();
-
-        // Load all tasks
-        const allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-
-        // Find and update the dragged task's status
-        const taskIndex = allTasks.findIndex(task => task.id === taskId);
-        if (taskIndex !== -1) {
-            const targetContainer = column.querySelector('.task-container');
-            const draggedTask = allTasks[taskIndex];
-            draggedTask.status = newStatus;
-            
-            // Remove task card from DOM
-            draggingTask.remove();
-            
-            // Re-add it to maintain priority order
-            addTaskCard(draggedTask, targetContainer);
-            
-            localStorage.setItem('allTasks', JSON.stringify(allTasks));
-        }
-    });
-});
-
-// Task Panel Management
-const taskPanel = document.getElementById('add-task-panel');
-const addTaskButton = document.getElementById('add-task-button');
-let editingTaskId = null;
-const cancelButton = document.getElementById('cancel-button');
-const submitButton = document.getElementById('submit-button');
-const clientNameInput = document.getElementById('client-name');
-const addressInput = document.getElementById('address');
-const typeOptions = document.querySelectorAll('.type-box');
-const miscInputContainer = document.getElementById('misc-input-container');
-const miscTypeInput = document.getElementById('misc-type');
-
-let selectedType = null;
-let selectedProcessing = 'normal'; // Default to normal processing
-let customMiscType = '';
-
-// Show/Hide Panel
-function showTaskPanel(taskData = null) {
-    taskPanel.classList.add('visible');
-    if (taskData) {
-        // Edit mode
-        editingTaskId = taskData.id;
-        clientNameInput.value = taskData.clientName;
-        addressInput.value = taskData.address || '';
-        const type = taskData.type.startsWith('Misc - ') ? 'Misc' : taskData.type;
-        typeOptions.forEach(opt => {
-            if (opt.dataset.type === type) {
-                opt.click();
-                if (type === 'Misc') {
-                    miscTypeInput.value = taskData.type.replace('Misc - ', '');
-                }
+    // Add task button - only for active users
+    const addTaskButton = document.getElementById('add-task-button');
+    if (addTaskButton) {
+        addTaskButton.addEventListener('click', function() {
+            if (currentUser && currentUser.is_active) {
+                showAddTaskPanel();
+            } else {
+                showMessage('Inactive users cannot add tasks', 'error');
             }
         });
-    } else {
-        // Add mode
-        editingTaskId = null;
-        clientNameInput.value = '';
-        addressInput.value = '';
-        selectedType = null;
-        miscTypeInput.value = '';
-        selectedProcessing = 'normal';
-        typeOptions.forEach(opt => opt.classList.remove('selected'));
-        document.querySelectorAll('.processing-box').forEach(box => {
-            box.classList.remove('selected');
+    }
+
+    // Clear done button - only for active users
+    const clearDoneButton = document.getElementById('clear-done-button');
+    if (clearDoneButton) {
+        clearDoneButton.addEventListener('click', function() {
+            if (currentUser && currentUser.is_active) {
+                clearDoneTasks();
+            } else {
+                showMessage('Inactive users cannot clear tasks', 'error');
+            }
         });
-        document.querySelector('.processing-box[data-processing="normal"]').classList.add('selected');
-        miscInputContainer.style.display = 'none';
+    }
+
+    // History buttons - only for active users
+    const undoButton = document.getElementById('undo-button');
+    const redoButton = document.getElementById('redo-button');
+    
+    if (undoButton) {
+        undoButton.addEventListener('click', function() {
+            if (currentUser && currentUser.is_active) {
+                undoLastAction();
+            } else {
+                showMessage('Inactive users cannot undo actions', 'error');
+            }
+        });
+    }
+    
+    if (redoButton) {
+        redoButton.addEventListener('click', function() {
+            if (currentUser && currentUser.is_active) {
+                redoLastAction();
+            } else {
+                showMessage('Inactive users cannot redo actions', 'error');
+            }
+        });
+    }
+
+    // Add task form
+    const addTaskForm = document.getElementById('add-task-form');
+    if (addTaskForm) {
+        addTaskForm.addEventListener('submit', handleAddTask);
+    }
+
+    // Cancel button
+    const cancelButton = document.getElementById('cancel-button');
+    if (cancelButton) {
+        cancelButton.addEventListener('click', hideAddTaskPanel);
+    }
+
+    // Task type selection
+    setupTaskTypeSelection();
+    setupProcessingSelection();
+
+    // Theme toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('change', toggleTheme);
+        
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        themeToggle.checked = savedTheme === 'dark';
+    }
+
+    // Close add task panel when clicking outside
+    if (addTaskPanel) {
+        addTaskPanel.addEventListener('click', function(e) {
+            if (e.target === addTaskPanel) {
+                hideAddTaskPanel();
+            }
+        });
     }
 }
 
-function hideTaskPanel() {
-    taskPanel.classList.remove('visible');
-    editingTaskId = null;
-}
-
-// Add Task Button Click
-addTaskButton.addEventListener('click', () => showTaskPanel());
-
-// Cancel Button Click
-cancelButton.addEventListener('click', hideTaskPanel);
-
-// Type and Processing Selection
-typeOptions.forEach(option => {
-    option.addEventListener('click', () => {
-        typeOptions.forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedType = option.dataset.type;
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const username = formData.get('username');
+    const password = formData.get('password');
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const errorContainer = document.getElementById('login-error');
+    
+    // Show loading state
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="button-loader">⟳</span> Signing in...';
+    
+    // Clear previous errors
+    if (errorContainer) {
+        errorContainer.remove();
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/auth/login-json`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password })
+        });
         
-        if (selectedType === 'Misc') {
-            miscInputContainer.style.display = 'block';
-            miscTypeInput.focus();
-        } else {
-            miscInputContainer.style.display = 'none';
-            customMiscType = '';
-        }
-    });
-});
-
-// Processing type selection
-document.querySelectorAll('.processing-box').forEach(box => {
-    box.addEventListener('click', () => {
-        document.querySelectorAll('.processing-box').forEach(b => b.classList.remove('selected'));
-        box.classList.add('selected');
-        selectedProcessing = box.dataset.processing;
-    });
-});
-
-// Track Misc type input
-miscTypeInput.addEventListener('input', (e) => {
-    customMiscType = e.target.value.trim();
-});
-
-// Submit Button Click
-submitButton.addEventListener('click', (event) => {
-    event.preventDefault();
-    const clientName = clientNameInput.value.trim();
-
-    if (clientName && selectedType) {
-        const existingTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
+        const data = await response.json();
         
-        if (editingTaskId) {
-            // Update existing task
-            const taskIndex = existingTasks.findIndex(task => task.id === editingTaskId);
-            if (taskIndex !== -1) {
-                const updatedTask = {
-                    ...existingTasks[taskIndex],
-                    clientName,
-                    type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
-                    address: addressInput.value.trim(),
-                    processing: selectedProcessing
-                };
-                existingTasks[taskIndex] = updatedTask;
-                
-                // Update UI
-                const oldTaskElement = document.querySelector(`[data-id="${editingTaskId}"]`);
-                if (oldTaskElement) {
-                    const container = oldTaskElement.closest('.task-container');
-                    oldTaskElement.remove();
-                    addTaskCard(updatedTask, container);
-                }
+        if (response.ok) {
+            authToken = data.access_token;
+            localStorage.setItem('auth_token', authToken);
+            
+            // Get user info
+            currentUser = await getCurrentUser();
+            
+            if (currentUser) {
+                showApp();
+            } else {
+                throw new Error('Failed to get user information');
             }
         } else {
-            // Add new task
-            const newTask = {
-                id: crypto.randomUUID(),
-                clientName,
-                type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
-                address: addressInput.value.trim(),
-                processing: selectedProcessing,
-                status: 'todo',
-                createdAt: Date.now()
-            };
-            existingTasks.push(newTask);
-            
-            // Add to UI
-            const container = columnContainers['todo'];
-            addTaskCard(newTask, container);
+            throw new Error(data.detail || 'Login failed');
         }
-        
-        // Save to localStorage
-        localStorage.setItem('allTasks', JSON.stringify(existingTasks));
-        
-        // Hide the panel
-        hideTaskPanel();
-    } else {
-        alert('Please enter a client name and type.');
-    }
-});
-
-// Clear Done Column
-clearDoneButton.addEventListener('click', () => {
-    // Get all tasks from localStorage
-    let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-    
-    // Find all tasks in the Done column
-    const doneTasks = allTasks.filter(task => task.status === 'done');
-    
-    // Store tasks in delete history
-    doneTasks.forEach(task => {
-        deletedTasks.push({...task});
-    });
-    
-    // Remove Done tasks from localStorage
-    allTasks = allTasks.filter(task => task.status !== 'done');
-    localStorage.setItem('allTasks', JSON.stringify(allTasks));
-    
-    // Clear the Done column in UI
-    columnContainers['done'].innerHTML = '';
-    
-    // Clear redo history when a new action is performed
-    restoredTasks.length = 0;
-    
-    // Update history buttons
-    updateHistoryButtons();
-});
-
-// Helper to create and insert a task card
-function addTaskCard(taskData, container) {
-    const newCard = document.createElement('div');
-    newCard.className = 'task';
-    newCard.draggable = true;
-    newCard.dataset.id = taskData.id;
-
-    // Create edit button
-    const editBtn = document.createElement('button');
-    editBtn.className = 'task-btn edit-task-btn';
-    editBtn.innerHTML = '✎';
-    editBtn.title = 'Edit task';
-
-    editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showTaskPanel(taskData);
-    });
-
-    // Create delete button
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'task-btn delete-task-btn';
-    deleteBtn.innerHTML = '&times;';
-    deleteBtn.title = 'Delete task';
-
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
-        // Clear redo history when a new action is performed
-        restoredTasks.length = 0;
-        
-        // Store the task's current state before deletion
-        const taskState = {
-            ...taskData,
-            status: newCard.closest('.column')?.id || 'todo'
-        };
-        deletedTasks.push(taskState);
-        
-        // Remove from localStorage
-        let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-        allTasks = allTasks.filter(task => task.id !== taskData.id);
-        localStorage.setItem('allTasks', JSON.stringify(allTasks));
-        
-        // Remove from DOM
-        newCard.remove();
-        
-        updateHistoryButtons();
-    });
-
-    // Card content
-    newCard.innerHTML = `
-        <h3 class="task-client">${taskData.clientName}</h3>
-        <span class="task-type" data-type="${taskData.type.split(' - ')[0]}">${taskData.type}</span>
-        ${taskData.processing === 'expedited' ? '<span class="task-expedited">expedited</span>' : ''}
-        ${taskData.address ? `<div class="task-address">${taskData.address}</div>` : ''}
-    `;
-    newCard.appendChild(editBtn);
-    newCard.appendChild(deleteBtn);
-
-    newCard.addEventListener('dragstart', () => {
-        newCard.classList.add('dragging');
-    });
-
-    newCard.addEventListener('dragend', () => {
-        newCard.classList.remove('dragging');
-    });
-
-    // Insert card in correct position based on priority
-    const existingCards = Array.from(container.children);
-    const insertIndex = existingCards.findIndex(card => {
-        const cardTask = JSON.parse(localStorage.getItem('allTasks')).find(t => t.id === card.dataset.id);
-        if (!cardTask) return true; // Place at end if task not found
-        
-        // Expedited tasks come before normal tasks
-        if (taskData.processing === 'expedited' && cardTask.processing !== 'expedited') return true;
-        if (taskData.processing !== 'expedited' && cardTask.processing === 'expedited') return false;
-        
-        // Within same processing type, sort by creation time (FIFO)
-        return taskData.createdAt < cardTask.createdAt;
-    });
-
-    if (insertIndex === -1) {
-        container.appendChild(newCard);
-    } else {
-        container.insertBefore(newCard, existingCards[insertIndex]);
+    } catch (error) {
+        console.error('Login error:', error);
+        showLoginError(error.message);
+    } finally {
+        // Reset button state
+        submitButton.disabled = false;
+        submitButton.innerHTML = '🔐 Sign In';
     }
 }
 
-// Undo delete
-undoButton.addEventListener('click', () => {
-    if (deletedTasks.length === 0) return;
-
-    const taskToRestore = deletedTasks.pop();
-    restoredTasks.push(taskToRestore);
-
-    // Add back to localStorage
-    const allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-    allTasks.push(taskToRestore);
-    localStorage.setItem('allTasks', JSON.stringify(allTasks));
-
-    // Add back to UI
-    const container = columnContainers[taskToRestore.status] || columnContainers['todo'];
-    addTaskCard(taskToRestore, container);
-
-    updateHistoryButtons();
-});
-
-// Redo delete
-redoButton.addEventListener('click', () => {
-    if (restoredTasks.length === 0) return;
-
-    const taskToDelete = restoredTasks.pop();
-    deletedTasks.push(taskToDelete);
-
-    // Remove from localStorage
-    let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-    allTasks = allTasks.filter(task => task.id !== taskToDelete.id);
-    localStorage.setItem('allTasks', JSON.stringify(allTasks));
-
-    // Remove from UI
-    const taskElement = document.querySelector(`[data-id="${taskToDelete.id}"]`);
-    if (taskElement) {
-        taskElement.remove();
+function showLoginError(message) {
+    const loginForm = document.getElementById('login-form');
+    let errorContainer = document.getElementById('login-error');
+    
+    // Remove existing error
+    if (errorContainer) {
+        errorContainer.remove();
     }
+    
+    // Create new error message
+    errorContainer = document.createElement('div');
+    errorContainer.id = 'login-error';
+    errorContainer.className = 'error-message';
+    errorContainer.textContent = message;
+    
+    loginForm.appendChild(errorContainer);
+}
 
-    updateHistoryButtons();
+async function getCurrentUser() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/me`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            return await response.json();
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error('Get user error:', error);
+        return null;
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fetch(`${API_BASE}/auth/logout`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+    } finally {
+        // Clear local data regardless of API response
+        authToken = null;
+        currentUser = null;
+        localStorage.removeItem('auth_token');
+        showLogin();
+    }
+}
+
+function showLogin() {
+    if (loginContainer) loginContainer.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
+}
+
+function showApp() {
+    if (loginContainer) loginContainer.style.display = 'none';
+    if (appContainer) appContainer.style.display = 'flex';
+    
+    // Update user info in the UI
+    updateUserInfo();
+    
+    // Load tasks
+    loadTasks();
+}
+
+function updateUserInfo() {
+    const userNameElement = document.getElementById('user-name');
+    const userRoleElement = document.getElementById('user-role');
+    
+    if (userNameElement && currentUser) {
+        userNameElement.textContent = currentUser.full_name || currentUser.username;
+    }
+    
+    if (userRoleElement && currentUser) {
+        if (currentUser.is_admin) {
+            userRoleElement.textContent = 'Admin';
+            userRoleElement.style.backgroundColor = '#ff9800';
+        } else if (currentUser.is_active) {
+            userRoleElement.textContent = 'Active User';
+            userRoleElement.style.backgroundColor = '#4caf50';
+        } else {
+            userRoleElement.textContent = 'Inactive User';
+            userRoleElement.style.backgroundColor = '#757575';
+        }
+    }
+    
+    // Update UI based on user status
+    updateUIForUserStatus();
+}
+
+function updateUIForUserStatus() {
+    const addTaskButton = document.getElementById('add-task-button');
+    const clearDoneButton = document.getElementById('clear-done-button');
+    const undoButton = document.getElementById('undo-button');
+    const redoButton = document.getElementById('redo-button');
+    
+    const isActive = currentUser && currentUser.is_active;
+    
+    // Update button states
+    if (addTaskButton) {
+        addTaskButton.disabled = !isActive;
+        addTaskButton.style.opacity = isActive ? '1' : '0.5';
+        addTaskButton.title = isActive ? 'Add new task' : 'Inactive users cannot add tasks';
+    }
+    
+    if (clearDoneButton) {
+        clearDoneButton.disabled = !isActive;
+        clearDoneButton.style.opacity = isActive ? '1' : '0.5';
+        clearDoneButton.title = isActive ? 'Clear completed tasks' : 'Inactive users cannot clear tasks';
+    }
+    
+    if (undoButton) {
+        undoButton.disabled = !isActive;
+        undoButton.style.opacity = isActive ? '1' : '0.5';
+        undoButton.title = isActive ? 'Undo last action' : 'Inactive users cannot undo';
+    }
+    
+    if (redoButton) {
+        redoButton.disabled = !isActive;
+        redoButton.style.opacity = isActive ? '1' : '0.5';
+        redoButton.title = isActive ? 'Redo last action' : 'Inactive users cannot redo';
+    }
+}
+
+async function loadTasks() {
+    try {
+        const response = await fetch(`${API_BASE}/tasks/`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            const tasks = await response.json();
+            displayTasks(tasks);
+        } else {
+            console.error('Failed to load tasks');
+        }
+    } catch (error) {
+        console.error('Load tasks error:', error);
+    }
+}
+
+function displayTasks(tasks) {
+    // Clear existing tasks
+    const columns = ['todo', 'in-review', 'awaiting-documents', 'done'];
+    columns.forEach(status => {
+        const container = document.querySelector(`#${status} .task-container`);
+        if (container) {
+            container.innerHTML = '';
+        }
+    });
+    
+    // Group tasks by status
+    const tasksByStatus = {
+        'todo': [],
+        'in-review': [],
+        'awaiting-documents': [],
+        'done': []
+    };
+    
+    tasks.forEach(task => {
+        if (tasksByStatus[task.status]) {
+            tasksByStatus[task.status].push(task);
+        }
+    });
+    
+    // Display tasks in each column
+    Object.keys(tasksByStatus).forEach(status => {
+        const container = document.querySelector(`#${status} .task-container`);
+        if (container) {
+            tasksByStatus[status].forEach(task => {
+                const taskElement = createTaskElement(task);
+                container.appendChild(taskElement);
+            });
+        }
+    });
+}
+
+function createTaskElement(task) {
+    const taskDiv = document.createElement('div');
+    taskDiv.className = 'task';
+    taskDiv.draggable = currentUser && currentUser.is_active; // Only draggable for active users
+    taskDiv.dataset.taskId = task.id;
+    
+    // Create task content
+    const clientDiv = document.createElement('div');
+    clientDiv.className = 'task-client';
+    clientDiv.textContent = task.client_name;
+    
+    const labelsDiv = document.createElement('div');
+    labelsDiv.className = 'task-labels';
+    
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'task-type';
+    typeSpan.dataset.type = task.task_type.split(' ')[0];
+    typeSpan.textContent = task.task_type;
+    
+    labelsDiv.appendChild(typeSpan);
+    
+    if (task.processing === 'expedited') {
+        const expeditedSpan = document.createElement('span');
+        expeditedSpan.className = 'task-expedited';
+        expeditedSpan.textContent = 'EXPEDITED';
+        labelsDiv.appendChild(expeditedSpan);
+    }
+    
+    const addressDiv = document.createElement('div');
+    addressDiv.className = 'task-address';
+    addressDiv.textContent = task.address || '';
+    
+    taskDiv.appendChild(clientDiv);
+    taskDiv.appendChild(labelsDiv);
+    if (task.address) {
+        taskDiv.appendChild(addressDiv);
+    }
+    
+    // Add owner info (since all users can see all tasks)
+    const ownerDiv = document.createElement('div');
+    ownerDiv.className = 'task-owner';
+    ownerDiv.style.fontSize = '0.8em';
+    ownerDiv.style.color = 'var(--text-color)';
+    ownerDiv.style.opacity = '0.7';
+    ownerDiv.style.marginTop = '5px';
+    ownerDiv.textContent = `Owner: ${task.owner?.full_name || task.owner?.username || 'Unknown'}`;
+    taskDiv.appendChild(ownerDiv);
+    
+    // Add edit and delete buttons (only for active users)
+    if (currentUser && currentUser.is_active) {
+        const editButton = document.createElement('button');
+        editButton.className = 'task-btn edit-task-btn';
+        editButton.innerHTML = '✏️';
+        editButton.title = 'Edit task';
+        editButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editTask(task);
+        });
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'task-btn delete-task-btn';
+        deleteButton.innerHTML = '✕';
+        deleteButton.title = 'Delete task';
+        deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteTask(task.id);
+        });
+        
+        taskDiv.appendChild(editButton);
+        taskDiv.appendChild(deleteButton);
+    }
+    
+    // Add drag and drop event listeners (only for active users)
+    if (currentUser && currentUser.is_active) {
+        taskDiv.addEventListener('dragstart', handleDragStart);
+        taskDiv.addEventListener('dragend', handleDragEnd);
+    }
+    
+    return taskDiv;
+}
+
+// Drag and drop functionality (only for active users)
+function handleDragStart(e) {
+    if (!currentUser || !currentUser.is_active) {
+        e.preventDefault();
+        return;
+    }
+    
+    draggedElement = e.target;
+    e.dataTransfer.setData('text/plain', e.target.dataset.taskId);
+    e.target.style.opacity = '0.5';
+    
+    // Create placeholder element
+    createDragPlaceholder(e.target);
+}
+
+function handleDragEnd(e) {
+    e.target.style.opacity = '1';
+    draggedElement = null;
+    
+    // Clean up placeholder
+    removeDragPlaceholder();
+}
+
+function createDragPlaceholder(originalElement) {
+    // Create a placeholder element that looks like the original task
+    dragPlaceholder = originalElement.cloneNode(true);
+    dragPlaceholder.classList.add('drag-placeholder');
+    dragPlaceholder.removeAttribute('draggable');
+    dragPlaceholder.removeAttribute('data-task-id');
+    
+    // Remove any button functionality from the placeholder
+    const buttons = dragPlaceholder.querySelectorAll('button');
+    buttons.forEach(btn => btn.remove());
+    
+    // Remove any event listeners by replacing with cloned element
+    const cleanPlaceholder = dragPlaceholder.cloneNode(true);
+    dragPlaceholder = cleanPlaceholder;
+    
+    // Initially place it in the original column
+    const originalContainer = originalElement.closest('.task-container');
+    if (originalContainer) {
+        originalContainer.appendChild(dragPlaceholder);
+    }
+}
+
+function removeDragPlaceholder() {
+    if (dragPlaceholder && dragPlaceholder.parentNode) {
+        dragPlaceholder.parentNode.removeChild(dragPlaceholder);
+        dragPlaceholder = null;
+    }
+}
+
+function movePlaceholderToColumn(targetColumn) {
+    if (!dragPlaceholder || !targetColumn) return;
+    
+    const targetContainer = targetColumn.querySelector('.task-container');
+    if (targetContainer && targetContainer !== dragPlaceholder.parentNode) {
+        targetContainer.appendChild(dragPlaceholder);
+    }
+}
+
+// Set up drop zones
+document.addEventListener('DOMContentLoaded', function() {
+    const columns = document.querySelectorAll('.task-container');
+    columns.forEach(column => {
+        column.addEventListener('dragover', handleDragOver);
+        column.addEventListener('dragenter', handleDragEnter);
+        column.addEventListener('drop', handleDrop);
+    });
+    
+    // Also add dragenter to the column headers for better UX
+    const columnElements = document.querySelectorAll('.column');
+    columnElements.forEach(column => {
+        column.addEventListener('dragenter', handleColumnDragEnter);
+    });
+    
+    // Add global dragend listener to ensure cleanup
+    document.addEventListener('dragend', function(e) {
+        if (e.target.classList.contains('task')) {
+            handleDragEnd(e);
+        }
+    });
 });
 
-// Helper to determine where to insert the dragged element
-function getDragAfterElement(column, y) {
-    const draggableElements = [...column.querySelectorAll('.task-container .task:not(.dragging)')];
+function handleDragOver(e) {
+    if (!currentUser || !currentUser.is_active) return;
+    
+    e.preventDefault();
+}
 
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
+function handleDragEnter(e) {
+    if (!currentUser || !currentUser.is_active) return;
+    if (!dragPlaceholder) return;
+    
+    e.preventDefault();
+    
+    const targetColumn = e.target.closest('.column');
+    if (targetColumn) {
+        movePlaceholderToColumn(targetColumn);
+    }
+}
+
+function handleColumnDragEnter(e) {
+    if (!currentUser || !currentUser.is_active) return;
+    if (!dragPlaceholder) return;
+    
+    e.preventDefault();
+    
+    const targetColumn = e.target.closest('.column');
+    if (targetColumn) {
+        movePlaceholderToColumn(targetColumn);
+    }
+}
+
+async function handleDrop(e) {
+    if (!currentUser || !currentUser.is_active) return;
+    
+    e.preventDefault();
+    
+    const taskId = e.dataTransfer.getData('text/plain');
+    const targetColumn = e.target.closest('.column');
+    const newStatus = targetColumn.id;
+    
+    // Clean up placeholder before moving task
+    removeDragPlaceholder();
+    
+    if (taskId && newStatus) {
+        await moveTask(parseInt(taskId), newStatus);
+    }
+}
+
+async function moveTask(taskId, newStatus) {
+    try {
+        const response = await fetch(`${API_BASE}/tasks/${taskId}/move?new_status=${encodeURIComponent(newStatus)}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            loadTasks(); // Reload tasks to reflect the change
         } else {
-            return closest;
+            const error = await response.json();
+            showMessage(error.detail || 'Failed to move task', 'error');
         }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+    } catch (error) {
+        console.error('Move task error:', error);
+        showMessage('Failed to move task', 'error');
+    }
+}
+
+// Add task functionality
+function showAddTaskPanel() {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot add tasks', 'error');
+        return;
+    }
+    
+    if (addTaskPanel) {
+        addTaskPanel.classList.add('visible');
+        // Set default processing type to "Normal"
+        setDefaultProcessingType();
+        document.getElementById('client-name').focus();
+    }
+}
+
+function setDefaultProcessingType() {
+    // Clear any existing selections
+    const processingBoxes = document.querySelectorAll('.processing-box');
+    processingBoxes.forEach(box => box.classList.remove('selected'));
+    
+    // Select "Normal" processing by default
+    const normalProcessingBox = document.querySelector('.processing-box[data-processing="normal"]');
+    if (normalProcessingBox) {
+        normalProcessingBox.classList.add('selected');
+    }
+}
+
+function hideAddTaskPanel() {
+    if (addTaskPanel) {
+        addTaskPanel.classList.remove('visible');
+        
+        // Reset form
+        const form = document.getElementById('add-task-form');
+        if (form) {
+            form.reset();
+            resetTaskTypeSelection();
+            resetProcessingSelection();
+            hideMiscInput();
+        }
+    }
+}
+
+async function handleAddTask(e) {
+    e.preventDefault();
+    
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot add tasks', 'error');
+        return;
+    }
+    
+    const formData = new FormData(e.target);
+    const clientName = formData.get('client-name');
+    const address = formData.get('address');
+    
+    // Get selected task type
+    const selectedType = document.querySelector('.type-box.selected');
+    if (!selectedType) {
+        showValidationMessage('Please select a task type');
+        return;
+    }
+    
+    let taskType = selectedType.dataset.type;
+    if (taskType === 'Misc') {
+        const miscType = formData.get('misc-type');
+        if (miscType && miscType.trim()) {
+            taskType = `Misc - ${miscType.trim()}`;
+        } else {
+            taskType = 'Misc';
+        }
+    }
+    
+    // Get selected processing
+    const selectedProcessing = document.querySelector('.processing-box.selected');
+    if (!selectedProcessing) {
+        showValidationMessage('Please select processing type');
+        return;
+    }
+    
+    const processing = selectedProcessing.dataset.processing;
+    
+    const taskData = {
+        client_name: clientName,
+        task_type: taskType,
+        address: address || null,
+        processing: processing,
+        status: 'todo'
+    };
+    
+    try {
+        const response = await fetch(`${API_BASE}/tasks/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(taskData)
+        });
+        
+        if (response.ok) {
+            hideAddTaskPanel();
+            loadTasks();
+            showMessage('Task created successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.detail || 'Failed to create task', 'error');
+        }
+    } catch (error) {
+        console.error('Create task error:', error);
+        showMessage('Failed to create task', 'error');
+    }
+}
+
+// Task type selection
+function setupTaskTypeSelection() {
+    const typeBoxes = document.querySelectorAll('.type-box');
+    typeBoxes.forEach(box => {
+        box.addEventListener('click', function() {
+            // Remove selected class from all boxes
+            typeBoxes.forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked box
+            this.classList.add('selected');
+            
+            // Show/hide misc input
+            if (this.dataset.type === 'Misc') {
+                showMiscInput();
+            } else {
+                hideMiscInput();
+            }
+        });
+    });
+}
+
+function resetTaskTypeSelection() {
+    const typeBoxes = document.querySelectorAll('.type-box');
+    typeBoxes.forEach(box => box.classList.remove('selected'));
+    hideMiscInput();
+}
+
+function showMiscInput() {
+    const miscContainer = document.getElementById('misc-input-container');
+    if (miscContainer) {
+        miscContainer.style.display = 'block';
+        document.getElementById('misc-type').focus();
+    }
+}
+
+function hideMiscInput() {
+    const miscContainer = document.getElementById('misc-input-container');
+    if (miscContainer) {
+        miscContainer.style.display = 'none';
+        document.getElementById('misc-type').value = '';
+    }
+}
+
+// Processing selection
+function setupProcessingSelection() {
+    const processingBoxes = document.querySelectorAll('.processing-box');
+    processingBoxes.forEach(box => {
+        box.addEventListener('click', function() {
+            // Remove selected class from all boxes
+            processingBoxes.forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked box
+            this.classList.add('selected');
+        });
+    });
+}
+
+function resetProcessingSelection() {
+    const processingBoxes = document.querySelectorAll('.processing-box');
+    processingBoxes.forEach(box => box.classList.remove('selected'));
+    
+    // Set "Normal" as default
+    const normalProcessingBox = document.querySelector('.processing-box[data-processing="normal"]');
+    if (normalProcessingBox) {
+        normalProcessingBox.classList.add('selected');
+    }
+}
+
+// Theme toggle
+function toggleTheme() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const theme = themeToggle.checked ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+}
+
+// Delete task
+async function deleteTask(taskId) {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot delete tasks', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            loadTasks();
+            showSuccessMessage('Task deleted successfully!');
+        } else {
+            const error = await response.json();
+            showMessage(error.detail || 'Failed to delete task', 'error');
+        }
+    } catch (error) {
+        console.error('Delete task error:', error);
+        showMessage('Failed to delete task', 'error');
+    }
+}
+
+// Edit task (placeholder - would need edit form)
+function editTask(task) {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot edit tasks', 'error');
+        return;
+    }
+    
+    showMessage('Edit functionality coming soon!', 'info');
+}
+
+// Clear completed tasks
+async function clearDoneTasks() {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot clear tasks', 'error');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to clear all completed tasks?')) {
+        return;
+    }
+    
+    // This would need a backend endpoint to clear done tasks
+    showMessage('Clear functionality coming soon!', 'info');
+}
+
+// History functions (placeholders)
+function undoLastAction() {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot undo actions', 'error');
+        return;
+    }
+    
+    showMessage('Undo functionality coming soon!', 'info');
+}
+
+function redoLastAction() {
+    if (!currentUser || !currentUser.is_active) {
+        showMessage('Inactive users cannot redo actions', 'error');
+        return;
+    }
+    
+    showMessage('Redo functionality coming soon!', 'info');
+}
+
+// Utility function to show validation messages at top center
+function showValidationMessage(message) {
+    // Remove any existing validation messages
+    const existingValidation = document.querySelector('.validation-message');
+    if (existingValidation) {
+        existingValidation.remove();
+    }
+    
+    // Create message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'validation-message';
+    messageDiv.textContent = message;
+    
+    // Style the message for top center positioning
+    messageDiv.style.position = 'fixed';
+    messageDiv.style.top = '20px';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translateX(-50%)';
+    messageDiv.style.padding = '12px 24px';
+    messageDiv.style.borderRadius = '8px';
+    messageDiv.style.color = 'white';
+    messageDiv.style.fontWeight = 'bold';
+    messageDiv.style.zIndex = '10001';
+    messageDiv.style.backgroundColor = '#f44336';
+    messageDiv.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.style.maxWidth = '400px';
+    messageDiv.style.textAlign = 'center';
+    
+    // Add to page
+    document.body.appendChild(messageDiv);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 4000);
+}
+
+// Utility function to show success messages at top center
+function showSuccessMessage(message) {
+    // Remove any existing success messages
+    const existingSuccess = document.querySelector('.success-message');
+    if (existingSuccess) {
+        existingSuccess.remove();
+    }
+    
+    // Create message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'success-message';
+    messageDiv.textContent = message;
+    
+    // Style the message for top center positioning
+    messageDiv.style.position = 'fixed';
+    messageDiv.style.top = '20px';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translateX(-50%)';
+    messageDiv.style.padding = '12px 24px';
+    messageDiv.style.borderRadius = '8px';
+    messageDiv.style.color = 'white';
+    messageDiv.style.fontWeight = 'bold';
+    messageDiv.style.zIndex = '10001';
+    messageDiv.style.backgroundColor = '#4caf50';
+    messageDiv.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.style.maxWidth = '400px';
+    messageDiv.style.textAlign = 'center';
+    
+    // Add to page
+    document.body.appendChild(messageDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 3000);
+}
+
+// Utility function to show messages
+function showMessage(message, type = 'info') {
+    // Create message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    messageDiv.textContent = message;
+    
+    // Style the message
+    messageDiv.style.position = 'fixed';
+    messageDiv.style.top = '20px';
+    messageDiv.style.right = '20px';
+    messageDiv.style.padding = '12px 20px';
+    messageDiv.style.borderRadius = '5px';
+    messageDiv.style.color = 'white';
+    messageDiv.style.fontWeight = 'bold';
+    messageDiv.style.zIndex = '10000';
+    messageDiv.style.maxWidth = '300px';
+    
+    // Set background color based on type
+    switch (type) {
+        case 'success':
+            messageDiv.style.backgroundColor = '#4caf50';
+            break;
+        case 'error':
+            messageDiv.style.backgroundColor = '#f44336';
+            break;
+        case 'info':
+            messageDiv.style.backgroundColor = '#2196f3';
+            break;
+        default:
+            messageDiv.style.backgroundColor = '#757575';
+    }
+    
+    // Add to page
+    document.body.appendChild(messageDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 3000);
 }

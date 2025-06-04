@@ -7,99 +7,136 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Sliding Add Task Panel -->
-    <div class="add-task-panel" id="add-task-panel">
-        <div class="overlay-content">
-            <h2>Configure Task</h2>
-            <form id="add-task-form">
-                <label for="client-name">Client:</label>
-                <input type="text" id="client-name" name="client-name" required>
-                
-                <label>Type:</label>
-                <div class="type-options">
-                    <div class="type-row">
-                        <div class="type-box" data-type="BDL">BDL</div>
-                        <div class="type-box" data-type="SDL">SDL</div>
-                    </div>
-                    <div class="type-row">
-                        <div class="type-box" data-type="nBDL">nBDL</div>
-                        <div class="type-box" data-type="nPO">nPO</div>
-                    </div>
-                    <div class="type-row single">
-                        <div class="type-box" data-type="Misc">Misc</div>
-                    </div>
+    <!-- Login Screen -->
+    <div class="login-container" id="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>Entrust RE Kanban</h1>
+                <p>TEG Task Management System</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
                 </div>
-
-                <div id="misc-input-container" style="display: none;">
-                    <label for="misc-type">Misc Type:</label>
-                    <input type="text" id="misc-type" name="misc-type" placeholder="Enter misc type (optional)">
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
-
-                <label for="address">Address:</label>
-                <textarea id="address" name="address" rows="3" placeholder="Enter address (optional)"></textarea>
-
-                <label>Processing:</label>
-                <div class="processing-options">
-                    <div class="processing-box" data-processing="normal">Normal</div>
-                    <div class="processing-box" data-processing="expedited">Expedited</div>
-                </div>
-                
-                <div class="form-buttons">
-                    <button type="button" id="cancel-button" title="Cancel">✕</button>
-                    <button type="submit" id="submit-button" title="Submit">✓</button>
-                </div>
+                <button type="submit" class="login-button" id="login-button">
+                    <span class="button-text">Sign In</span>
+                    <span class="button-loader" style="display: none;">⟳</span>
+                </button>
+                <div class="error-message" id="error-message" style="display: none;"></div>
             </form>
         </div>
     </div>
 
-    <div class="header-container">
-        <div class="left-controls">
-            <div class="history-controls">
-                <button id="undo-button" title="Undo delete">⟲</button>
-                <button id="redo-button" title="Redo delete">⟳</button>
+    <!-- Main Application (Hidden until login) -->
+    <div class="app-container" id="app-container" style="display: none;">
+        <!-- User Info Bar -->
+        <div class="user-bar">
+            <div class="user-info">
+                <span id="user-name">Welcome, User</span>
+                <span id="user-role" class="user-role"></span>
+            </div>
+            <button id="logout-button" class="logout-button" title="Logout">Sign Out</button>
+        </div>
+
+        <!-- Sliding Add Task Panel -->
+        <div class="add-task-panel" id="add-task-panel">
+            <div class="overlay-content">
+                <h2>Configure Task</h2>
+                <form id="add-task-form">
+                    <label for="client-name">Client:</label>
+                    <input type="text" id="client-name" name="client-name" required>
+                    
+                    <label>Type:</label>
+                    <div class="type-options">
+                        <div class="type-row">
+                            <div class="type-box" data-type="BDL">BDL</div>
+                            <div class="type-box" data-type="SDL">SDL</div>
+                        </div>
+                        <div class="type-row">
+                            <div class="type-box" data-type="nBDL">nBDL</div>
+                            <div class="type-box" data-type="nPO">nPO</div>
+                        </div>
+                        <div class="type-row single">
+                            <div class="type-box" data-type="Misc">Misc</div>
+                        </div>
+                    </div>
+
+                    <div id="misc-input-container" style="display: none;">
+                        <label for="misc-type">Misc Type (Optional):</label>
+                        <input type="text" id="misc-type" name="misc-type" placeholder="Enter misc type (optional)">
+                    </div>
+
+                    <label for="address">Address:</label>
+                    <textarea id="address" name="address" rows="3" placeholder="Enter address (optional)"></textarea>
+
+                    <label>Processing:</label>
+                    <div class="processing-options">
+                        <div class="processing-box" data-processing="normal">Normal</div>
+                        <div class="processing-box" data-processing="expedited">Expedited</div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" id="cancel-button" title="Cancel">✕</button>
+                        <button type="submit" id="submit-button" title="Submit">✓</button>
+                    </div>
+                </form>
             </div>
         </div>
-        <h1>Entrust RE Kanban</h1>
-        <div class="right-controls">
-            <label class="theme-toggle" title="Toggle dark mode">
-                <input type="checkbox" id="theme-toggle">
-                <span class="toggle-track">
-                    <span class="toggle-indicator">
-                        <span class="toggle-icon light">☀</span>
-                        <span class="toggle-icon dark">☽</span>
+
+        <div class="header-container">
+            <div class="left-controls">
+                <div class="history-controls">
+                    <button id="undo-button" title="Undo delete">⟲</button>
+                    <button id="redo-button" title="Redo delete">⟳</button>
+                </div>
+            </div>
+            <h1>Entrust RE Kanban</h1>
+            <div class="right-controls">
+                <label class="theme-toggle" title="Toggle dark mode">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="toggle-track">
+                        <span class="toggle-indicator">
+                            <span class="toggle-icon light">☀</span>
+                            <span class="toggle-icon dark">☽</span>
+                        </span>
                     </span>
-                </span>
-            </label>
-        </div>
-    </div>
-    <div class="board">
-        <div class="column" id="todo">
-            <div class="header" style="text-transform: uppercase;">
-                <h2>To Do</h2>
-                <button id="add-task-button">Add Task</button>
-            </div>
-            <div class="task-container">
-                <!-- Tasks will be dynamically added here -->
+                </label>
             </div>
         </div>
-        <div class="column" id="in-review">
-            <div class="header" style="text-transform: uppercase;">
-                <h2>In Review</h2>
+        <div class="board">
+            <div class="column" id="todo">
+                <div class="header" style="text-transform: uppercase;">
+                    <h2>To Do</h2>
+                    <button id="add-task-button">Add Task</button>
+                </div>
+                <div class="task-container">
+                    <!-- Tasks will be dynamically added here -->
+                </div>
             </div>
-            <div class="task-container"></div>
-        </div>
-        <div class="column" id="awaiting-documents">
-            <div class="header">
-                <h2>Awaiting Documents</h2>
+            <div class="column" id="in-review">
+                <div class="header" style="text-transform: uppercase;">
+                    <h2>In Review</h2>
+                </div>
+                <div class="task-container"></div>
             </div>
-            <div class="task-container"></div>
-        </div>
-        <div class="column" id="done">
-            <div class="header">
-                <h2>Done</h2>
-                <button id="clear-done-button">Clear</button>
+            <div class="column" id="awaiting-documents">
+                <div class="header">
+                    <h2>Awaiting Documents</h2>
+                </div>
+                <div class="task-container"></div>
             </div>
-            <div class="task-container"></div>
+            <div class="column" id="done">
+                <div class="header">
+                    <h2>Done</h2>
+                    <button id="clear-done-button">Clear</button>
+                </div>
+                <div class="task-container"></div>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>
