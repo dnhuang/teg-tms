@@ -10,6 +10,8 @@ let websocket = null;
 let reconnectAttempts = 0;
 let maxReconnectAttempts = 5;
 let reconnectTimeout = null;
+let isEditMode = false;
+let editingTaskId = null;
 
 // API configuration
 const API_BASE = 'http://localhost:8000/api/v1';
@@ -819,16 +821,33 @@ async function moveTask(taskId, newStatus) {
 }
 
 // Add task functionality
-function showAddTaskPanel() {
+function showAddTaskPanel(editMode = false, taskData = null) {
     if (!currentUser || !currentUser.is_active) {
-        showMessage('Inactive users cannot add tasks', 'error');
+        showMessage(editMode ? 'Inactive users cannot edit tasks' : 'Inactive users cannot add tasks', 'error');
         return;
     }
     
     if (addTaskPanel) {
         addTaskPanel.classList.add('visible');
-        // Set default processing type to "Normal"
-        setDefaultProcessingType();
+        
+        // Update panel title and button text based on mode
+        const panelTitle = document.querySelector('.add-task-panel h2');
+        const submitButton = document.getElementById('submit-button');
+        
+        if (editMode && taskData) {
+            if (panelTitle) panelTitle.textContent = 'Edit Task';
+            if (submitButton) submitButton.title = 'Update Task';
+            populateFormWithTaskData(taskData);
+        } else {
+            if (panelTitle) panelTitle.textContent = 'Configure Task';
+            if (submitButton) submitButton.title = 'Submit';
+            // Reset edit mode
+            isEditMode = false;
+            editingTaskId = null;
+            // Set default processing type to "Normal"
+            setDefaultProcessingType();
+        }
+        
         document.getElementById('client-name').focus();
     }
 }
@@ -849,6 +868,10 @@ function hideAddTaskPanel() {
     if (addTaskPanel) {
         addTaskPanel.classList.remove('visible');
         
+        // Reset edit mode
+        isEditMode = false;
+        editingTaskId = null;
+        
         // Reset form
         const form = document.getElementById('add-task-form');
         if (form) {
@@ -857,6 +880,78 @@ function hideAddTaskPanel() {
             resetProcessingSelection();
             hideMiscInput();
         }
+        
+        // Reset panel title and button text
+        const panelTitle = document.querySelector('.add-task-panel h2');
+        const submitButton = document.getElementById('submit-button');
+        if (panelTitle) panelTitle.textContent = 'Configure Task';
+        if (submitButton) submitButton.title = 'Submit';
+    }
+}
+
+// Helper function to populate form with existing task data
+function populateFormWithTaskData(task) {
+    // Populate client name
+    const clientNameInput = document.getElementById('client-name');
+    if (clientNameInput) {
+        clientNameInput.value = task.client_name || '';
+    }
+    
+    // Populate address
+    const addressInput = document.getElementById('address');
+    if (addressInput) {
+        addressInput.value = task.address || '';
+    }
+    
+    // Parse and select task type
+    selectTaskType(task.task_type);
+    
+    // Select processing type
+    selectProcessingType(task.processing);
+}
+
+// Helper function to parse and select task type
+function selectTaskType(taskType) {
+    // Clear existing selections
+    resetTaskTypeSelection();
+    
+    let typeToSelect = taskType;
+    let miscValue = '';
+    
+    // Handle "Misc - CustomType" format
+    if (taskType.startsWith('Misc - ')) {
+        typeToSelect = 'Misc';
+        miscValue = taskType.substring(7); // Remove "Misc - " prefix
+    } else if (taskType === 'Misc') {
+        typeToSelect = 'Misc';
+    }
+    
+    // Select the appropriate type box
+    const typeBox = document.querySelector(`.type-box[data-type="${typeToSelect}"]`);
+    if (typeBox) {
+        typeBox.classList.add('selected');
+        
+        // If it's Misc, show the input and populate it
+        if (typeToSelect === 'Misc') {
+            showMiscInput();
+            const miscInput = document.getElementById('misc-type');
+            if (miscInput) {
+                miscInput.value = miscValue;
+            }
+        }
+    }
+}
+
+// Helper function to select processing type
+function selectProcessingType(processing) {
+    // Clear existing selections
+    const processingBoxes = document.querySelectorAll('.processing-box');
+    processingBoxes.forEach(box => box.classList.remove('selected'));
+    
+    // Select the appropriate processing box
+    const processingBox = document.querySelector(`.processing-box[data-processing="${processing}"]`);
+    if (processingBox) {
+        processingBox.classList.add('selected');
     }
 }
 
@@ -864,7 +959,7 @@ async function handleAddTask(e) {
     e.preventDefault();
     
     if (!currentUser || !currentUser.is_active) {
-        showMessage('Inactive users cannot add tasks', 'error');
+        showMessage(isEditMode ? 'Inactive users cannot edit tasks' : 'Inactive users cannot add tasks', 'error');
         return;
     }
     
@@ -902,30 +997,52 @@ async function handleAddTask(e) {
         client_name: clientName,
         task_type: taskType,
         address: address || null,
-        processing: processing,
-        status: 'todo'
+        processing: processing
     };
     
+    // Only add status for new tasks (edit mode preserves existing status)
+    if (!isEditMode) {
+        taskData.status = 'todo';
+    }
+    
     try {
-        const response = await fetch(`${API_BASE}/tasks/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(taskData)
-        });
+        let response;
+        let successMessage;
+        
+        if (isEditMode && editingTaskId) {
+            // Update existing task
+            response = await fetch(`${API_BASE}/tasks/${editingTaskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(taskData)
+            });
+            successMessage = 'Task updated successfully!';
+        } else {
+            // Create new task
+            response = await fetch(`${API_BASE}/tasks/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(taskData)
+            });
+            successMessage = 'Task created successfully!';
+        }
         
         if (response.ok) {
             hideAddTaskPanel();
-            showMessage('Task created successfully!', 'success');
+            showMessage(successMessage, 'success');
         } else {
             const error = await response.json();
-            showMessage(error.detail || 'Failed to create task', 'error');
+            showMessage(error.detail || `Failed to ${isEditMode ? 'update' : 'create'} task`, 'error');
         }
     } catch (error) {
-        console.error('Create task error:', error);
-        showMessage('Failed to create task', 'error');
+        console.error(`${isEditMode ? 'Update' : 'Create'} task error:`, error);
+        showMessage(`Failed to ${isEditMode ? 'update' : 'create'} task`, 'error');
     }
 }
 
@@ -1032,14 +1149,19 @@ async function deleteTask(taskId) {
     }
 }
 
-// Edit task (placeholder - would need edit form)
+// Edit task
 function editTask(task) {
     if (!currentUser || !currentUser.is_active) {
         showMessage('Inactive users cannot edit tasks', 'error');
         return;
     }
     
-    showMessage('Edit functionality coming soon!', 'info');
+    // Set edit mode
+    isEditMode = true;
+    editingTaskId = task.id;
+    
+    // Show the panel with edit mode
+    showAddTaskPanel(true, task);
 }
 
 // Clear completed tasks
