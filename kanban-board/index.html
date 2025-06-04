@@ -3,14 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanban Board</title>
+    <title>Entrust RE Kanban</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Kanban Board</h1>
+    <!-- Sliding Add Task Panel -->
+    <div class="add-task-panel" id="add-task-panel">
+        <div class="overlay-content">
+            <h2>Configure Task</h2>
+            <form id="add-task-form">
+                <label for="client-name">Client Name:</label>
+                <input type="text" id="client-name" name="client-name" required>
+                
+                <label>Type:</label>
+                <div class="type-options">
+                    <div class="type-row">
+                        <div class="type-box" data-type="BDL">BDL</div>
+                        <div class="type-box" data-type="SDL">SDL</div>
+                    </div>
+                    <div class="type-row">
+                        <div class="type-box" data-type="nBDL">nBDL</div>
+                        <div class="type-box" data-type="nPO">nPO</div>
+                    </div>
+                    <div class="type-row single">
+                        <div class="type-box" data-type="Misc">Misc</div>
+                    </div>
+                </div>
+                
+                <div id="misc-input-container" style="display: none;">
+                    <label for="misc-type">Misc Type:</label>
+                    <input type="text" id="misc-type" name="misc-type" placeholder="Enter custom type">
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="button" id="cancel-button" title="Cancel">✕</button>
+                    <button type="submit" id="submit-button" title="Submit">✓</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="header-container">
+        <div class="left-controls">
+            <div class="history-controls">
+                <button id="undo-button" title="Undo delete">⟲</button>
+                <button id="redo-button" title="Redo delete">⟳</button>
+            </div>
+        </div>
+        <h1>Entrust RE Kanban</h1>
+        <div class="right-controls">
+            <label class="theme-toggle" title="Toggle dark mode">
+                <input type="checkbox" id="theme-toggle">
+                <span class="toggle-track">
+                    <span class="toggle-indicator">
+                        <span class="toggle-icon light">☀</span>
+                        <span class="toggle-icon dark">☽</span>
+                    </span>
+                </span>
+            </label>
+        </div>
+    </div>
     <div class="board">
         <div class="column" id="todo">
-            <div class="header">
+            <div class="header" style="text-transform: uppercase;">
                 <h2>To Do</h2>
                 <button id="add-task-button">Add Task</button>
             </div>
@@ -19,14 +74,14 @@
             </div>
         </div>
         <div class="column" id="in-review">
-            <div class="header">
+            <div class="header" style="text-transform: uppercase;">
                 <h2>In Review</h2>
             </div>
             <div class="task-container"></div>
         </div>
-        <div class="column" id="waiting-for-documents">
+        <div class="column" id="awaiting-documents">
             <div class="header">
-                <h2>Waiting for Documents</h2>
+                <h2>Awaiting Documents</h2>
             </div>
             <div class="task-container"></div>
         </div>
