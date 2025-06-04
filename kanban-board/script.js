@@ -171,7 +171,7 @@ async function handleLogin(e) {
     } finally {
         // Reset button state
         submitButton.disabled = false;
-        submitButton.innerHTML = '🔐 Sign In';
+        submitButton.innerHTML = 'Sign In';
     }
 }
 
