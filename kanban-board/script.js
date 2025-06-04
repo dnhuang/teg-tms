@@ -122,6 +122,7 @@ let editingTaskId = null;
 const cancelButton = document.getElementById('cancel-button');
 const submitButton = document.getElementById('submit-button');
 const clientNameInput = document.getElementById('client-name');
+const addressInput = document.getElementById('address');
 const typeOptions = document.querySelectorAll('.type-box');
 const miscInputContainer = document.getElementById('misc-input-container');
 const miscTypeInput = document.getElementById('misc-type');
@@ -137,6 +138,7 @@ function showTaskPanel(taskData = null) {
         // Edit mode
         editingTaskId = taskData.id;
         clientNameInput.value = taskData.clientName;
+        addressInput.value = taskData.address || '';
         const type = taskData.type.startsWith('Misc - ') ? 'Misc' : taskData.type;
         typeOptions.forEach(opt => {
             if (opt.dataset.type === type) {
@@ -150,6 +152,7 @@ function showTaskPanel(taskData = null) {
         // Add mode
         editingTaskId = null;
         clientNameInput.value = '';
+        addressInput.value = '';
         selectedType = null;
         miscTypeInput.value = '';
         selectedProcessing = 'normal';
@@ -220,6 +223,7 @@ submitButton.addEventListener('click', (event) => {
                     ...existingTasks[taskIndex],
                     clientName,
                     type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
+                    address: addressInput.value.trim(),
                     processing: selectedProcessing
                 };
                 existingTasks[taskIndex] = updatedTask;
@@ -238,6 +242,7 @@ submitButton.addEventListener('click', (event) => {
                 id: crypto.randomUUID(),
                 clientName,
                 type: selectedType === 'Misc' && customMiscType ? `Misc - ${customMiscType}` : selectedType,
+                address: addressInput.value.trim(),
                 processing: selectedProcessing,
                 status: 'todo',
                 createdAt: Date.now()
@@ -259,6 +264,33 @@ submitButton.addEventListener('click', (event) => {
     }
 });
 
+// Clear Done Column
+clearDoneButton.addEventListener('click', () => {
+    // Get all tasks from localStorage
+    let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
+    
+    // Find all tasks in the Done column
+    const doneTasks = allTasks.filter(task => task.status === 'done');
+    
+    // Store tasks in delete history
+    doneTasks.forEach(task => {
+        deletedTasks.push({...task});
+    });
+    
+    // Remove Done tasks from localStorage
+    allTasks = allTasks.filter(task => task.status !== 'done');
+    localStorage.setItem('allTasks', JSON.stringify(allTasks));
+    
+    // Clear the Done column in UI
+    columnContainers['done'].innerHTML = '';
+    
+    // Clear redo history when a new action is performed
+    restoredTasks.length = 0;
+    
+    // Update history buttons
+    updateHistoryButtons();
+});
+
 // Helper to create and insert a task card
 function addTaskCard(taskData, container) {
     const newCard = document.createElement('div');
@@ -275,33 +307,6 @@ function addTaskCard(taskData, container) {
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         showTaskPanel(taskData);
-    });
-    
-    // Clear Done Column
-    clearDoneButton.addEventListener('click', () => {
-        // Get all tasks from localStorage
-        let allTasks = JSON.parse(localStorage.getItem('allTasks')) || [];
-        
-        // Find all tasks in the Done column
-        const doneTasks = allTasks.filter(task => task.status === 'done');
-        
-        // Store tasks in delete history
-        doneTasks.forEach(task => {
-            deletedTasks.push({...task});
-        });
-        
-        // Remove Done tasks from localStorage
-        allTasks = allTasks.filter(task => task.status !== 'done');
-        localStorage.setItem('allTasks', JSON.stringify(allTasks));
-        
-        // Clear the Done column in UI
-        columnContainers['done'].innerHTML = '';
-        
-        // Clear redo history when a new action is performed
-        restoredTasks.length = 0;
-        
-        // Update history buttons
-        updateHistoryButtons();
     });
 
     // Create delete button
@@ -339,6 +344,7 @@ function addTaskCard(taskData, container) {
         <h3 class="task-client">${taskData.clientName}</h3>
         <span class="task-type" data-type="${taskData.type.split(' - ')[0]}">${taskData.type}</span>
         ${taskData.processing === 'expedited' ? '<span class="task-expedited">expedited</span>' : ''}
+        ${taskData.address ? `<div class="task-address">${taskData.address}</div>` : ''}
     `;
     newCard.appendChild(editBtn);
     newCard.appendChild(deleteBtn);
