@@ -855,7 +855,9 @@ async function clearDoneTasks() {
         if (response.ok) {
             const result = await response.json();
             loadTasks(); // Reload tasks to reflect the changes
-            showMessage(result.message, 'success');
+            // Check if this is a warning (no tasks to clear) or success
+            const messageType = result.type === 'warning' ? 'error' : 'success';
+            showMessage(result.message, messageType);
         } else {
             const error = await response.json();
             showMessage(error.detail || 'Failed to clear completed tasks', 'error');
@@ -967,21 +969,31 @@ function showSuccessMessage(message) {
 
 // Utility function to show messages
 function showMessage(message, type = 'info') {
+    // Remove any existing messages of the same type
+    const existingMessage = document.querySelector(`.message-${type}`);
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
     // Create message element
     const messageDiv = document.createElement('div');
     messageDiv.className = `message message-${type}`;
     messageDiv.textContent = message;
     
-    // Style the message
+    // Style the message for top center positioning (like validation messages)
     messageDiv.style.position = 'fixed';
     messageDiv.style.top = '20px';
-    messageDiv.style.right = '20px';
-    messageDiv.style.padding = '12px 20px';
-    messageDiv.style.borderRadius = '5px';
+    messageDiv.style.left = '50%';
+    messageDiv.style.transform = 'translateX(-50%)';
+    messageDiv.style.padding = '12px 24px';
+    messageDiv.style.borderRadius = '8px';
     messageDiv.style.color = 'white';
     messageDiv.style.fontWeight = 'bold';
-    messageDiv.style.zIndex = '10000';
-    messageDiv.style.maxWidth = '300px';
+    messageDiv.style.zIndex = '10001';
+    messageDiv.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+    messageDiv.style.fontSize = '14px';
+    messageDiv.style.maxWidth = '400px';
+    messageDiv.style.textAlign = 'center';
     
     // Set background color based on type
     switch (type) {

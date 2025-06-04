@@ -112,7 +112,7 @@ def clear_done_tasks(
     done_tasks = db.query(Task).filter(Task.status == "done").all()
     
     if not done_tasks:
-        return {"message": "No completed tasks to clear", "deleted_count": 0}
+        return {"message": "No completed tasks to clear", "deleted_count": 0, "type": "warning"}
     
     # Log each task deletion for history
     for task in done_tasks:
@@ -136,7 +136,7 @@ def clear_done_tasks(
     db.query(Task).filter(Task.status == "done").delete()
     db.commit()
     
-    return {"message": f"Successfully cleared {deleted_count} completed tasks", "deleted_count": deleted_count}
+    return {"message": f"Successfully cleared {deleted_count} completed task(s)", "deleted_count": deleted_count}
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
