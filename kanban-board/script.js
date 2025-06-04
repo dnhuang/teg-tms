@@ -1,8 +1,6 @@
 // Global variables
 let currentUser = null;
 let authToken = localStorage.getItem('auth_token');
-let taskHistory = [];
-let historyIndex = -1;
 let dragPlaceholder = null;
 let draggedElement = null;
 let originalColumn = null;
@@ -85,29 +83,6 @@ function setupEventListeners() {
         });
     }
 
-    // History buttons - only for active users
-    const undoButton = document.getElementById('undo-button');
-    const redoButton = document.getElementById('redo-button');
-    
-    if (undoButton) {
-        undoButton.addEventListener('click', function() {
-            if (currentUser && currentUser.is_active) {
-                undoLastAction();
-            } else {
-                showMessage('Inactive users cannot undo actions', 'error');
-            }
-        });
-    }
-    
-    if (redoButton) {
-        redoButton.addEventListener('click', function() {
-            if (currentUser && currentUser.is_active) {
-                redoLastAction();
-            } else {
-                showMessage('Inactive users cannot redo actions', 'error');
-            }
-        });
-    }
 
     // Add task form
     const addTaskForm = document.getElementById('add-task-form');
@@ -397,11 +372,14 @@ function handleWebSocketMessage(message) {
 function handleTaskCreated(taskData) {
     console.log('Task created:', taskData);
     
-    // Add the new task to the appropriate column
+    // Add the new task to the appropriate column and re-sort
     const container = document.querySelector(`#${taskData.status} .task-container`);
     if (container) {
         const taskElement = createTaskElement(taskData);
         container.appendChild(taskElement);
+        
+        // Re-sort the entire column to maintain proper order
+        resortColumn(container);
     }
 }
 
@@ -411,8 +389,14 @@ function handleTaskUpdated(taskData) {
     // Find and update the existing task element
     const existingElement = document.querySelector(`[data-task-id="${taskData.id}"]`);
     if (existingElement) {
+        const container = existingElement.closest('.task-container');
         const newElement = createTaskElement(taskData);
         existingElement.parentNode.replaceChild(newElement, existingElement);
+        
+        // Re-sort the column in case processing type changed
+        if (container) {
+            resortColumn(container);
+        }
     }
 }
 
@@ -435,11 +419,14 @@ function handleTaskMoved(taskData) {
         existingElement.remove();
     }
     
-    // Add to new position
+    // Add to new position and re-sort
     const container = document.querySelector(`#${taskData.status} .task-container`);
     if (container) {
         const taskElement = createTaskElement(taskData);
         container.appendChild(taskElement);
+        
+        // Re-sort the entire column to maintain proper order
+        resortColumn(container);
     }
 }
 
@@ -483,8 +470,6 @@ function updateUserInfo() {
 function updateUIForUserStatus() {
     const addTaskButton = document.getElementById('add-task-button');
     const clearDoneButton = document.getElementById('clear-done-button');
-    const undoButton = document.getElementById('undo-button');
-    const redoButton = document.getElementById('redo-button');
     
     const isActive = currentUser && currentUser.is_active;
     
@@ -499,18 +484,6 @@ function updateUIForUserStatus() {
         clearDoneButton.disabled = !isActive;
         clearDoneButton.style.opacity = isActive ? '1' : '0.5';
         clearDoneButton.title = isActive ? 'Clear completed tasks' : 'Inactive users cannot clear tasks';
-    }
-    
-    if (undoButton) {
-        undoButton.disabled = !isActive;
-        undoButton.style.opacity = isActive ? '1' : '0.5';
-        undoButton.title = isActive ? 'Undo last action' : 'Inactive users cannot undo';
-    }
-    
-    if (redoButton) {
-        redoButton.disabled = !isActive;
-        redoButton.style.opacity = isActive ? '1' : '0.5';
-        redoButton.title = isActive ? 'Redo last action' : 'Inactive users cannot redo';
     }
 }
 
@@ -557,15 +530,74 @@ function displayTasks(tasks) {
         }
     });
     
-    // Display tasks in each column
+    // Sort and display tasks in each column
     Object.keys(tasksByStatus).forEach(status => {
         const container = document.querySelector(`#${status} .task-container`);
         if (container) {
-            tasksByStatus[status].forEach(task => {
+            // Sort tasks: expedited first, then normal, both FIFO (older first)
+            const sortedTasks = sortTasksForColumn(tasksByStatus[status]);
+            sortedTasks.forEach(task => {
                 const taskElement = createTaskElement(task);
                 container.appendChild(taskElement);
             });
         }
+    });
+}
+
+// Function to sort tasks within a column (expedited first, then normal, both FIFO)
+function sortTasksForColumn(tasks) {
+    return tasks.sort((a, b) => {
+        // First, sort by processing type (expedited first)
+        if (a.processing !== b.processing) {
+            if (a.processing === 'expedited') return -1;
+            if (b.processing === 'expedited') return 1;
+        }
+        
+        // Within same processing type, sort by creation time (FIFO - older first)
+        const aDate = new Date(a.created_at);
+        const bDate = new Date(b.created_at);
+        return aDate - bDate;
+    });
+}
+
+// Function to re-sort tasks within a column container
+function resortColumn(container) {
+    const taskElements = Array.from(container.children);
+    
+    // Extract task data from DOM elements and sort
+    const tasksWithElements = taskElements.map(element => {
+        const taskId = element.dataset.taskId;
+        const isExpedited = element.querySelector('.task-expedited') !== null;
+        
+        // Extract created_at from a data attribute if available, otherwise use current time
+        const createdAt = element.dataset.createdAt || new Date().toISOString();
+        
+        return {
+            element,
+            processing: isExpedited ? 'expedited' : 'normal',
+            created_at: createdAt,
+            taskId
+        };
+    });
+    
+    // Sort using the same logic as sortTasksForColumn
+    tasksWithElements.sort((a, b) => {
+        // First, sort by processing type (expedited first)
+        if (a.processing !== b.processing) {
+            if (a.processing === 'expedited') return -1;
+            if (b.processing === 'expedited') return 1;
+        }
+        
+        // Within same processing type, sort by creation time (FIFO - older first)
+        const aDate = new Date(a.created_at);
+        const bDate = new Date(b.created_at);
+        return aDate - bDate;
+    });
+    
+    // Remove all elements and re-add them in sorted order
+    container.innerHTML = '';
+    tasksWithElements.forEach(({ element }) => {
+        container.appendChild(element);
     });
 }
 
@@ -574,6 +606,7 @@ function createTaskElement(task) {
     taskDiv.className = 'task';
     taskDiv.draggable = currentUser && currentUser.is_active; // Only draggable for active users
     taskDiv.dataset.taskId = task.id;
+    taskDiv.dataset.createdAt = task.created_at; // Store creation time for sorting
     
     // Create task content
     const clientDiv = document.createElement('div');
@@ -1194,24 +1227,6 @@ async function clearDoneTasks() {
     }
 }
 
-// History functions (placeholders)
-function undoLastAction() {
-    if (!currentUser || !currentUser.is_active) {
-        showMessage('Inactive users cannot undo actions', 'error');
-        return;
-    }
-    
-    showMessage('Undo functionality coming soon!', 'info');
-}
-
-function redoLastAction() {
-    if (!currentUser || !currentUser.is_active) {
-        showMessage('Inactive users cannot redo actions', 'error');
-        return;
-    }
-    
-    showMessage('Redo functionality coming soon!', 'info');
-}
 
 // Utility function to show validation messages at top center
 function showValidationMessage(message) {
