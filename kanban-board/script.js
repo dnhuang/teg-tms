@@ -401,8 +401,6 @@ function handleTaskCreated(taskData) {
         const taskElement = createTaskElement(taskData);
         container.appendChild(taskElement);
     }
-    
-    showMessage(`Task created by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
 }
 
 function handleTaskUpdated(taskData) {
@@ -414,8 +412,6 @@ function handleTaskUpdated(taskData) {
         const newElement = createTaskElement(taskData);
         existingElement.parentNode.replaceChild(newElement, existingElement);
     }
-    
-    showMessage(`Task updated by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
 }
 
 function handleTaskDeleted(taskData) {
@@ -426,8 +422,6 @@ function handleTaskDeleted(taskData) {
     if (taskElement) {
         taskElement.remove();
     }
-    
-    showMessage(`Task deleted by another user`, 'info');
 }
 
 function handleTaskMoved(taskData) {
@@ -445,8 +439,6 @@ function handleTaskMoved(taskData) {
         const taskElement = createTaskElement(taskData);
         container.appendChild(taskElement);
     }
-    
-    showMessage(`Task moved by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
 }
 
 function handleTasksCleared(data) {
@@ -459,8 +451,6 @@ function handleTasksCleared(data) {
             taskElement.remove();
         }
     });
-    
-    showMessage(`${data.count} completed tasks cleared by another user`, 'info');
 }
 
 function updateUserInfo() {
