@@ -569,14 +569,20 @@ function resortColumn(container) {
         const taskId = element.dataset.taskId;
         const isExpedited = element.querySelector('.task-expedited') !== null;
         
-        // Extract created_at from a data attribute if available, otherwise use current time
-        const createdAt = element.dataset.createdAt || new Date().toISOString();
+        // Extract created_at from a data attribute
+        // If not available, use task ID as a fallback for consistent ordering
+        let createdAt = element.dataset.createdAt;
+        if (!createdAt) {
+            // For tasks without created_at data, use a deterministic fallback
+            // This ensures consistent ordering even if we don't have the exact timestamp
+            createdAt = `1970-01-01T00:00:${String(taskId).padStart(2, '0')}.000Z`;
+        }
         
         return {
             element,
             processing: isExpedited ? 'expedited' : 'normal',
             created_at: createdAt,
-            taskId
+            taskId: parseInt(taskId)
         };
     });
     
@@ -589,9 +595,17 @@ function resortColumn(container) {
         }
         
         // Within same processing type, sort by creation time (FIFO - older first)
+        // If both tasks don't have real timestamps, sort by task ID as fallback
         const aDate = new Date(a.created_at);
         const bDate = new Date(b.created_at);
-        return aDate - bDate;
+        const dateComparison = aDate - bDate;
+        
+        // If dates are the same (likely both are fallback dates), sort by task ID
+        if (dateComparison === 0) {
+            return a.taskId - b.taskId;
+        }
+        
+        return dateComparison;
     });
     
     // Remove all elements and re-add them in sorted order
