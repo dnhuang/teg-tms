@@ -844,12 +844,26 @@ async function clearDoneTasks() {
         return;
     }
     
-    if (!confirm('Are you sure you want to clear all completed tasks?')) {
-        return;
+    try {
+        const response = await fetch(`${API_BASE}/tasks/clear-done`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            loadTasks(); // Reload tasks to reflect the changes
+            showMessage(result.message, 'success');
+        } else {
+            const error = await response.json();
+            showMessage(error.detail || 'Failed to clear completed tasks', 'error');
+        }
+    } catch (error) {
+        console.error('Clear done tasks error:', error);
+        showMessage('Failed to clear completed tasks', 'error');
     }
-    
-    // This would need a backend endpoint to clear done tasks
-    showMessage('Clear functionality coming soon!', 'info');
 }
 
 // History functions (placeholders)

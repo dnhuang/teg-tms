@@ -93,6 +93,52 @@ def create_task(
     return db_task
 
 
+@router.delete("/clear-done")
+def clear_done_tasks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete all tasks with status 'done' (only for active users)
+    """
+    # Check if user is active
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive users cannot clear tasks"
+        )
+    
+    # Get all done tasks
+    done_tasks = db.query(Task).filter(Task.status == "done").all()
+    
+    if not done_tasks:
+        return {"message": "No completed tasks to clear", "deleted_count": 0}
+    
+    # Log each task deletion for history
+    for task in done_tasks:
+        task_info = {
+            "client_name": task.client_name,
+            "task_type": task.task_type,
+            "status": task.status,
+            "processing": task.processing
+        }
+        
+        log_task_action(
+            db=db,
+            task_id=task.id,
+            user_id=current_user.id,
+            action="deleted_via_clear",
+            old_values=task_info
+        )
+    
+    # Delete all done tasks
+    deleted_count = len(done_tasks)
+    db.query(Task).filter(Task.status == "done").delete()
+    db.commit()
+    
+    return {"message": f"Successfully cleared {deleted_count} completed tasks", "deleted_count": deleted_count}
+
+
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
     task_id: int,
