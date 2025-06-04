@@ -11,6 +11,7 @@ from ..database import get_db
 from ..models import Task, User, TaskHistory
 from ..schemas import TaskCreate, TaskResponse, TaskUpdate
 from ..auth import get_current_user
+from ..websocket_manager import manager
 
 router = APIRouter()
 
@@ -42,7 +43,7 @@ def get_tasks(
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-def create_task(
+async def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -90,11 +91,38 @@ def create_task(
         }
     )
     
+    # Broadcast task creation to all connected users
+    task_data = {
+        "id": db_task.id,
+        "client_name": db_task.client_name,
+        "task_type": db_task.task_type,
+        "address": db_task.address,
+        "processing": db_task.processing,
+        "status": db_task.status,
+        "description": db_task.description,
+        "owner_id": db_task.owner_id,
+        "created_at": db_task.created_at.isoformat() if db_task.created_at else None,
+        "updated_at": db_task.updated_at.isoformat() if db_task.updated_at else None,
+        "priority_order": db_task.priority_order,
+        "owner": {
+            "id": db_task.owner.id,
+            "username": db_task.owner.username,
+            "full_name": db_task.owner.full_name
+        } if db_task.owner else None
+    }
+    
+    await manager.broadcast_task_event(
+        "task_created",
+        task_data,
+        user_id=current_user.id,
+        exclude_user=current_user.username
+    )
+    
     return db_task
 
 
 @router.delete("/clear-done")
-def clear_done_tasks(
+async def clear_done_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -133,8 +161,17 @@ def clear_done_tasks(
     
     # Delete all done tasks
     deleted_count = len(done_tasks)
+    deleted_task_ids = [task.id for task in done_tasks]
     db.query(Task).filter(Task.status == "done").delete()
     db.commit()
+    
+    # Broadcast task clearing to all connected users
+    await manager.broadcast_task_event(
+        "tasks_cleared",
+        {"deleted_task_ids": deleted_task_ids, "count": deleted_count},
+        user_id=current_user.id,
+        exclude_user=current_user.username
+    )
     
     return {"message": f"Successfully cleared {deleted_count} completed task(s)", "deleted_count": deleted_count}
 
@@ -159,7 +196,7 @@ def get_task(
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
-def update_task(
+async def update_task(
     task_id: int,
     task_update: TaskUpdate,
     db: Session = Depends(get_db),
@@ -219,11 +256,39 @@ def update_task(
         new_values=new_values
     )
     
+    # Broadcast task update to all connected users
+    task_data = {
+        "id": task.id,
+        "client_name": task.client_name,
+        "task_type": task.task_type,
+        "address": task.address,
+        "processing": task.processing,
+        "status": task.status,
+        "description": task.description,
+        "owner_id": task.owner_id,
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        "priority_order": task.priority_order,
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "owner": {
+            "id": task.owner.id,
+            "username": task.owner.username,
+            "full_name": task.owner.full_name
+        } if task.owner else None
+    }
+    
+    await manager.broadcast_task_event(
+        "task_updated",
+        task_data,
+        user_id=current_user.id,
+        exclude_user=current_user.username
+    )
+    
     return task
 
 
 @router.delete("/{task_id}")
-def delete_task(
+async def delete_task(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -265,11 +330,27 @@ def delete_task(
     db.delete(task)
     db.commit()
     
+    # Broadcast task deletion to all connected users
+    task_data = {
+        "id": task_id,
+        "client_name": task_info["client_name"],
+        "task_type": task_info["task_type"],
+        "status": task_info["status"],
+        "processing": task_info["processing"]
+    }
+    
+    await manager.broadcast_task_event(
+        "task_deleted",
+        task_data,
+        user_id=current_user.id,
+        exclude_user=current_user.username
+    )
+    
     return {"message": "Task deleted successfully"}
 
 
 @router.post("/{task_id}/move")
-def move_task(
+async def move_task(
     task_id: int,
     new_status: str,
     new_priority: Optional[int] = None,
@@ -328,6 +409,34 @@ def move_task(
         action="moved",
         old_values={"status": old_status, "priority_order": old_priority},
         new_values={"status": new_status, "priority_order": task.priority_order}
+    )
+    
+    # Broadcast task move to all connected users
+    task_data = {
+        "id": task.id,
+        "client_name": task.client_name,
+        "task_type": task.task_type,
+        "address": task.address,
+        "processing": task.processing,
+        "status": task.status,
+        "description": task.description,
+        "owner_id": task.owner_id,
+        "created_at": task.created_at.isoformat() if task.created_at else None,
+        "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+        "priority_order": task.priority_order,
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
+        "owner": {
+            "id": task.owner.id,
+            "username": task.owner.username,
+            "full_name": task.owner.full_name
+        } if task.owner else None
+    }
+    
+    await manager.broadcast_task_event(
+        "task_moved",
+        task_data,
+        user_id=current_user.id,
+        exclude_user=current_user.username
     )
     
     return {"message": "Task moved successfully", "task": task}

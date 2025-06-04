@@ -6,9 +6,14 @@ let historyIndex = -1;
 let dragPlaceholder = null;
 let draggedElement = null;
 let originalColumn = null;
+let websocket = null;
+let reconnectAttempts = 0;
+let maxReconnectAttempts = 5;
+let reconnectTimeout = null;
 
 // API configuration
 const API_BASE = 'http://localhost:8000/api/v1';
+const WS_BASE = 'ws://localhost:8000/api/v1/ws';
 
 // DOM elements will be set after DOM loads
 let loginContainer, appContainer, addTaskPanel;
@@ -241,6 +246,9 @@ async function handleLogout() {
     } catch (error) {
         console.error('Logout error:', error);
     } finally {
+        // Disconnect WebSocket
+        disconnectWebSocket();
+        
         // Clear local data regardless of API response
         authToken = null;
         currentUser = null;
@@ -261,8 +269,198 @@ function showApp() {
     // Update user info in the UI
     updateUserInfo();
     
+    // Connect WebSocket
+    connectWebSocket();
+    
     // Load tasks
     loadTasks();
+}
+
+// WebSocket connection management
+function connectWebSocket() {
+    if (!authToken) {
+        console.log('No auth token available for WebSocket connection');
+        return;
+    }
+
+    try {
+        const wsUrl = `${WS_BASE}/ws?token=${encodeURIComponent(authToken)}`;
+        websocket = new WebSocket(wsUrl);
+
+        websocket.onopen = function(event) {
+            console.log('WebSocket connected');
+            reconnectAttempts = 0;
+            showMessage('Real-time updates connected', 'success');
+            
+            // Clear any existing reconnection timeout
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+        };
+
+        websocket.onmessage = function(event) {
+            try {
+                const message = JSON.parse(event.data);
+                handleWebSocketMessage(message);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+            }
+        };
+
+        websocket.onclose = function(event) {
+            console.log('WebSocket disconnected:', event.code, event.reason);
+            websocket = null;
+            
+            // Attempt to reconnect if not intentionally closed
+            if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+                attemptReconnect();
+            }
+        };
+
+        websocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            showMessage('Real-time connection error', 'error');
+        };
+
+    } catch (error) {
+        console.error('Failed to create WebSocket connection:', error);
+    }
+}
+
+function attemptReconnect() {
+    reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // Exponential backoff, max 30s
+    
+    console.log(`Attempting WebSocket reconnection ${reconnectAttempts}/${maxReconnectAttempts} in ${delay}ms`);
+    
+    reconnectTimeout = setTimeout(() => {
+        if (authToken && currentUser) {
+            connectWebSocket();
+        }
+    }, delay);
+}
+
+function disconnectWebSocket() {
+    if (websocket) {
+        websocket.close(1000, 'User logged out');
+        websocket = null;
+    }
+    
+    if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+    }
+    
+    reconnectAttempts = 0;
+}
+
+function handleWebSocketMessage(message) {
+    console.log('WebSocket message received:', message);
+    
+    switch (message.type) {
+        case 'connection_established':
+            console.log('WebSocket connection established for user:', message.user);
+            break;
+            
+        case 'task_created':
+            handleTaskCreated(message.data);
+            break;
+            
+        case 'task_updated':
+            handleTaskUpdated(message.data);
+            break;
+            
+        case 'task_deleted':
+            handleTaskDeleted(message.data);
+            break;
+            
+        case 'task_moved':
+            handleTaskMoved(message.data);
+            break;
+            
+        case 'tasks_cleared':
+            handleTasksCleared(message.data);
+            break;
+            
+        case 'pong':
+            // Response to ping - connection is alive
+            break;
+            
+        default:
+            console.log('Unknown WebSocket message type:', message.type);
+    }
+}
+
+function handleTaskCreated(taskData) {
+    console.log('Task created:', taskData);
+    
+    // Add the new task to the appropriate column
+    const container = document.querySelector(`#${taskData.status} .task-container`);
+    if (container) {
+        const taskElement = createTaskElement(taskData);
+        container.appendChild(taskElement);
+    }
+    
+    showMessage(`Task created by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
+}
+
+function handleTaskUpdated(taskData) {
+    console.log('Task updated:', taskData);
+    
+    // Find and update the existing task element
+    const existingElement = document.querySelector(`[data-task-id="${taskData.id}"]`);
+    if (existingElement) {
+        const newElement = createTaskElement(taskData);
+        existingElement.parentNode.replaceChild(newElement, existingElement);
+    }
+    
+    showMessage(`Task updated by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
+}
+
+function handleTaskDeleted(taskData) {
+    console.log('Task deleted:', taskData);
+    
+    // Remove the task element from the DOM
+    const taskElement = document.querySelector(`[data-task-id="${taskData.id}"]`);
+    if (taskElement) {
+        taskElement.remove();
+    }
+    
+    showMessage(`Task deleted by another user`, 'info');
+}
+
+function handleTaskMoved(taskData) {
+    console.log('Task moved:', taskData);
+    
+    // Remove from current position
+    const existingElement = document.querySelector(`[data-task-id="${taskData.id}"]`);
+    if (existingElement) {
+        existingElement.remove();
+    }
+    
+    // Add to new position
+    const container = document.querySelector(`#${taskData.status} .task-container`);
+    if (container) {
+        const taskElement = createTaskElement(taskData);
+        container.appendChild(taskElement);
+    }
+    
+    showMessage(`Task moved by ${taskData.owner?.full_name || taskData.owner?.username || 'another user'}`, 'info');
+}
+
+function handleTasksCleared(data) {
+    console.log('Tasks cleared:', data);
+    
+    // Remove all cleared task elements
+    data.deleted_task_ids.forEach(taskId => {
+        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskElement) {
+            taskElement.remove();
+        }
+    });
+    
+    showMessage(`${data.count} completed tasks cleared by another user`, 'info');
 }
 
 function updateUserInfo() {
@@ -619,7 +817,7 @@ async function moveTask(taskId, newStatus) {
         });
         
         if (response.ok) {
-            loadTasks(); // Reload tasks to reflect the change
+            // WebSocket will handle real-time updates, no need to reload
         } else {
             const error = await response.json();
             showMessage(error.detail || 'Failed to move task', 'error');
@@ -730,7 +928,6 @@ async function handleAddTask(e) {
         
         if (response.ok) {
             hideAddTaskPanel();
-            loadTasks();
             showMessage('Task created successfully!', 'success');
         } else {
             const error = await response.json();
@@ -834,7 +1031,6 @@ async function deleteTask(taskId) {
         });
         
         if (response.ok) {
-            loadTasks();
             showSuccessMessage('Task deleted successfully!');
         } else {
             const error = await response.json();
@@ -873,7 +1069,6 @@ async function clearDoneTasks() {
         
         if (response.ok) {
             const result = await response.json();
-            loadTasks(); // Reload tasks to reflect the changes
             // Check if this is a warning (no tasks to clear) or success
             const messageType = result.type === 'warning' ? 'error' : 'success';
             showMessage(result.message, messageType);
