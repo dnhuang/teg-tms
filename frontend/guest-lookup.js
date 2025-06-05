@@ -3,7 +3,7 @@
  * Handles task status lookup for guest users
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'https://teg-tms.onrender.com/api/v1';
 
 // DOM Elements
 const lookupForm = document.getElementById('guest-lookup-form');
