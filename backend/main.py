@@ -153,23 +153,22 @@ async def api_health_check():
         )
 
 
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint with API information"""
+# Include routers with proper prefixes
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+app.include_router(websocket.router, prefix="/api/v1/ws", tags=["websocket"])
+app.include_router(guest.router, prefix="/api/v1/guest", tags=["guest"])
+
+# API Root endpoint (only for /api path)
+@app.get("/api")
+async def api_root():
+    """API root endpoint with API information"""
     return {
         "message": "Welcome to TEG Task Management System API",
         "version": "1.0.0",
         "docs": "/docs" if settings.debug else "Documentation disabled in production",
         "health": "/health"
     }
-
-
-# Include routers with proper prefixes
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
-app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
-app.include_router(websocket.router, prefix="/api/v1/ws", tags=["websocket"])
-app.include_router(guest.router, prefix="/api/v1/guest", tags=["guest"])
 
 # Mount static files (frontend) - must be last to avoid conflicts with API routes
 if os.path.exists("frontend"):
