@@ -161,7 +161,7 @@ async function lookupTaskStatus(customId) {
         console.log(`DEBUG Frontend: Response data:`, data);
         
         if (response.ok) {
-            showStatusModal(data.task_id, data.message);
+            showStatusModal(data.task_id, data.message, data.status);
         } else {
             // Handle API errors
             const errorMsg = data.detail || 'An error occurred while looking up your task';
@@ -204,9 +204,13 @@ function clearError() {
     errorMessage.textContent = '';
 }
 
-function showStatusModal(taskId, message) {
+function showStatusModal(taskId, message, status) {
     modalTaskId.textContent = taskId;
-    modalStatusMessage.textContent = message;
+    modalStatusMessage.innerHTML = message;
+    
+    // Reset to base class
+    modalStatusMessage.className = 'status-message';
+    
     statusModal.style.display = 'flex';
     statusOkBtn.focus();
 }

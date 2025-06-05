@@ -59,12 +59,12 @@ async def get_task_status(custom_id: str, db: Session = Depends(get_db)) -> Dict
             detail="Request not found, please check and enter again"
         )
     
-    # Map internal status to client-friendly messages
+    # Map internal status to client-friendly messages with selective HTML styling
     status_messages = {
-        "todo": "Your request has been received and is currently queued for processing. We will begin working on it shortly.",
-        "in-review": "Your request is currently under review by our team. Please allow additional time for processing and await further communication.",
-        "awaiting-documents": "Your request requires additional documentation or information. Please check your email for our correspondence or contact our office for details.",
-        "done": "Your request has been completed successfully. No further action is required on your part. Thank you for choosing our services."
+        "todo": "Your request has been received and is <span class='status-highlight status-todo'>currently queued for processing</span>. We will begin working on it shortly.",
+        "in-review": "Your request is <span class='status-highlight status-in-review'>currently under review</span> by our team. Please allow additional time for processing and await further communication.",
+        "awaiting-documents": "Your request <span class='status-highlight status-awaiting-documents'>requires additional documentation or information</span>. Please check your email for our correspondence or contact our office for details.",
+        "done": "Your request has been <span class='status-highlight status-done'>completed successfully</span>. No further action is required on your part. Thank you for choosing our services."
     }
     
     # Get the appropriate message

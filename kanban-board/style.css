@@ -1378,6 +1378,44 @@ h1 {
     padding: 0 10px;
 }
 
+/* Status highlight styling for specific phrases */
+.status-highlight.status-todo {
+    color: #5DADE2;
+    font-weight: 600;
+}
+
+.status-highlight.status-in-review {
+    color: #F39C12;
+    font-weight: 600;
+}
+
+.status-highlight.status-awaiting-documents {
+    color: #E74C3C;
+    font-weight: 600;
+}
+
+.status-highlight.status-done {
+    color: #27AE60;
+    font-weight: 600;
+}
+
+/* Dark mode adjustments for status highlights */
+[data-theme="dark"] .status-highlight.status-todo {
+    color: #85C1E9;
+}
+
+[data-theme="dark"] .status-highlight.status-in-review {
+    color: #F7DC6F;
+}
+
+[data-theme="dark"] .status-highlight.status-awaiting-documents {
+    color: #F1948A;
+}
+
+[data-theme="dark"] .status-highlight.status-done {
+    color: #58D68D;
+}
+
 .status-footer {
     padding: 16px 24px 24px 24px;
     text-align: center;
