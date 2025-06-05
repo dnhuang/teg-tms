@@ -6,10 +6,12 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 import logging
 import uvicorn
+import os
 
 from .config import settings
 from .database import create_tables, engine
@@ -168,6 +170,11 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(websocket.router, prefix="/api/v1/ws", tags=["websocket"])
 app.include_router(guest.router, prefix="/api/v1/guest", tags=["guest"])
+
+# Mount static files (frontend) - must be last to avoid conflicts with API routes
+if os.path.exists("frontend"):
+    app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+    logger.info("Frontend static files mounted at /")
 
 
 # Development server runner
