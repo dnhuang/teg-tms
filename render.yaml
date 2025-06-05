@@ -1,0 +1,23 @@
+services:
+  # Web Service
+  - type: web
+    name: entrust-kanban
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python render_start.py
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+    healthCheckPath: /api/v1/health
+
+  # PostgreSQL Database
+  - type: pserv
+    name: entrust-kanban-db
+    env: postgresql
+    plan: free
+    postgresMajorVersion: 15
