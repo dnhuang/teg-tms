@@ -149,6 +149,22 @@ body {
     box-shadow: none;
 }
 
+/* Dark mode login button styling */
+[data-theme="dark"] .login-button {
+    background-color: #1a1a1a;
+    border: 2px solid #666666;
+}
+
+[data-theme="dark"] .login-button:hover {
+    background-color: #2a2a2a;
+    border-color: #777777;
+}
+
+[data-theme="dark"] .login-button:disabled {
+    background-color: #111111;
+    border-color: #333333;
+}
+
 .button-loader {
     animation: spin 1s linear infinite;
 }
