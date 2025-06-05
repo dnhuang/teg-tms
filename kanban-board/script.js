@@ -622,6 +622,38 @@ function createTaskElement(task) {
     taskDiv.dataset.taskId = task.id;
     taskDiv.dataset.createdAt = task.created_at; // Store creation time for sorting
     
+    // Create top section for buttons (only for active users)
+    if (currentUser && currentUser.is_active) {
+        const topSection = document.createElement('div');
+        topSection.className = 'task-top-section';
+        
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'task-button-container';
+        
+        const editButton = document.createElement('button');
+        editButton.className = 'task-btn edit-task-btn';
+        editButton.innerHTML = '✏️';
+        editButton.title = 'Edit task';
+        editButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            editTask(task);
+        });
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'task-btn delete-task-btn';
+        deleteButton.innerHTML = '✕';
+        deleteButton.title = 'Delete task';
+        deleteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteTask(task.id);
+        });
+        
+        buttonContainer.appendChild(editButton);
+        buttonContainer.appendChild(deleteButton);
+        topSection.appendChild(buttonContainer);
+        taskDiv.appendChild(topSection);
+    }
+    
     // Create task content
     const clientDiv = document.createElement('div');
     clientDiv.className = 'task-client';
@@ -654,39 +686,11 @@ function createTaskElement(task) {
         taskDiv.appendChild(addressDiv);
     }
     
-    // Add owner info (since all users can see all tasks)
+    // Add owner info at bottom-right
     const ownerDiv = document.createElement('div');
     ownerDiv.className = 'task-owner';
-    ownerDiv.style.fontSize = '0.8em';
-    ownerDiv.style.color = 'var(--text-color)';
-    ownerDiv.style.opacity = '0.7';
-    ownerDiv.style.marginTop = '5px';
     ownerDiv.textContent = `Owner: ${task.owner?.full_name || task.owner?.username || 'Unknown'}`;
     taskDiv.appendChild(ownerDiv);
-    
-    // Add edit and delete buttons (only for active users)
-    if (currentUser && currentUser.is_active) {
-        const editButton = document.createElement('button');
-        editButton.className = 'task-btn edit-task-btn';
-        editButton.innerHTML = '✏️';
-        editButton.title = 'Edit task';
-        editButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            editTask(task);
-        });
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'task-btn delete-task-btn';
-        deleteButton.innerHTML = '✕';
-        deleteButton.title = 'Delete task';
-        deleteButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteTask(task.id);
-        });
-        
-        taskDiv.appendChild(editButton);
-        taskDiv.appendChild(deleteButton);
-    }
     
     // Add drag and drop event listeners (only for active users)
     if (currentUser && currentUser.is_active) {
