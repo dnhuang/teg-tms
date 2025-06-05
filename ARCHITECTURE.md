@@ -1,364 +1,321 @@
-# Entrust RE Kanban Board - Architecture Documentation
+# TEG Task Management System - Architecture Documentation
 
 ## Table of Contents
 - [System Overview](#system-overview)
 - [Technology Stack](#technology-stack)
-- [Application Architecture](#application-architecture)
-- [Component Breakdown](#component-breakdown)
+- [System Architecture](#system-architecture)
+- [Component Overview](#component-overview)
 - [Data Flow](#data-flow)
-- [Data Models](#data-models)
-- [Storage Strategy](#storage-strategy)
-- [Event System](#event-system)
-- [UI Architecture](#ui-architecture)
-- [Performance Considerations](#performance-considerations)
-- [Security & Data Integrity](#security--data-integrity)
+- [User Experience](#user-experience)
+- [Security & Authentication](#security--authentication)
+- [Deployment Architecture](#deployment-architecture)
 
 ## System Overview
 
-The Entrust RE Kanban Board is a client-side web application designed for managing real estate processing tasks. It implements a traditional Kanban workflow with four columns (To Do, In Review, Awaiting Documents, Done) and supports specialized task types relevant to real estate operations.
+The TEG Task Management System is a modern web application designed for managing real estate processing workflows at The Entrust Group. It provides a collaborative Kanban-style interface with real-time updates, user authentication, and client self-service capabilities.
 
 ### Key Features
-- **Real Estate Task Types**: BDL, SDL, nBDL, nPO, and Misc categories
-- **Priority Processing**: Normal and Expedited task handling
-- **Drag & Drop Interface**: Intuitive task movement between workflow stages
-- **Persistent Storage**: Local data persistence using browser localStorage
-- **Theme System**: Light/Dark mode with CSS custom properties
-- **History Management**: Undo/Redo functionality for task deletions
-- **Responsive Design**: Optimized for desktop and tablet usage
+- **Multi-user Collaboration**: Real-time task updates across all connected users
+- **Role-based Access**: Admin, Active Users, and Read-only User permissions
+- **Real Estate Workflows**: Specialized for BDL, SDL, nBDL, nPO task types
+- **Client Self-Service**: Public task status lookup without login required
+- **Professional Deployment**: Production-ready with automatic backups and SSL
 
 ## Technology Stack
 
-### Frontend Technologies
-- **HTML5**: Semantic markup with accessibility considerations
-- **CSS3**: Modern CSS with custom properties, flexbox, and animations
-- **Vanilla JavaScript (ES6+)**: No external dependencies for core functionality
-- **Local Storage API**: Client-side data persistence
+### Production Stack
+- **Frontend**: Modern JavaScript, HTML5, CSS3
+- **Backend**: FastAPI (Python) with async support
+- **Database**: PostgreSQL with automatic backups
+- **Hosting**: Render Cloud Platform
+- **Security**: JWT authentication, HTTPS, bcrypt password hashing
 
-### Development Approach
-- **Progressive Enhancement**: Core functionality works without JavaScript
-- **Component-Based Architecture**: Modular code organization
-- **Event-Driven Design**: Loose coupling through event delegation
+### Key Benefits
+- **Scalable**: Cloud-native architecture supports growth
+- **Reliable**: Production database with automatic backups
+- **Secure**: Industry-standard authentication and encryption
+- **Fast**: Real-time updates via WebSocket connections
 
-## Application Architecture
+## System Architecture
 
 ```mermaid
 graph TB
-    subgraph "Entrust RE Kanban Application"
-        subgraph "Presentation Layer"
-            A[index.html<br/>DOM Structure] 
-            B[style.css<br/>Visual Design & Theming]
+    subgraph "Client Browsers"
+        A[Staff Web App<br/>Task Management]
+        B[Client Lookup<br/>Status Check]
+    end
+    
+    subgraph "Render Cloud Platform"
+        subgraph "Web Service"
+            C[FastAPI Backend<br/>Authentication & API]
+            D[Static File Server<br/>Frontend Assets]
         end
         
-        subgraph "Application Layer"
-            C[script.js<br/>Core Application Logic]
-            
-            subgraph "Core Modules"
-                D[Task Manager<br/>Task CRUD Operations]
-                E[Drag & Drop System<br/>UI Interactions] 
-                F[Storage Manager<br/>Data Persistence]
-                G[Theme Controller<br/>UI State Management]
-                H[History Manager<br/>Undo/Redo System]
-                I[UI Controller<br/>DOM Manipulation]
-                J[Event Dispatcher<br/>Event Coordination]
-            end
+        subgraph "Database Service"
+            E[PostgreSQL<br/>User & Task Data]
         end
         
-        subgraph "Data Layer"
-            K[localStorage<br/>Browser Storage]
-            L[Task Data Model<br/>Structured Data]
-        end
-        
-        subgraph "External Dependencies"
-            M[Browser APIs<br/>Web Platform]
+        subgraph "Security Layer"
+            F[HTTPS/SSL<br/>Encryption]
+            G[JWT Tokens<br/>Authentication]
         end
     end
     
-    A --> C
-    B --> A
-    C --> D
+    A -.->|HTTPS| F
+    B -.->|HTTPS| F
+    F --> C
+    F --> D
     C --> E
-    C --> F
-    C --> G
-    C --> H
-    C --> I
-    C --> J
-    F --> K
-    F --> L
-    C --> M
+    C -.->|WebSocket| A
+    G -.->|Validates| C
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#e8f5e9
+    style E fill:#fff3e0
 ```
 
-## Component Breakdown
+## Component Overview
 
-### 1. Task Management System
+### Frontend Components
 
-**Responsibilities:**
-- Task creation, updating, and deletion
-- Task validation and data integrity
-- Status management across workflow columns
-- Priority handling (expedited vs normal processing)
+#### **Staff Interface** (`frontend/index.html` & `frontend/script.js`)
+- **Purpose**: Main task management interface for staff members
+- **Features**: Drag-and-drop Kanban board, real-time updates, task creation/editing
+- **Users**: All authenticated staff (Admin, Active, Inactive users)
 
-**Key Functions:**
-- [`addTaskCard()`](kanban-board/script.js:295) - Creates and renders task elements
-- [`showTaskPanel()`](kanban-board/script.js:135) - Manages task creation/editing UI
-- [`updateTaskStatus()`](kanban-board/script.js:84) - Handles workflow transitions
+#### **Client Lookup** (`frontend/guest-lookup.html` & `frontend/guest-lookup.js`)
+- **Purpose**: Public task status checking for clients
+- **Features**: Simple search by task ID, no login required
+- **Users**: Clients and external parties
 
-### 2. Drag & Drop System
+### Backend Components
 
-**Responsibilities:**
-- Drag event handling and visual feedback
-- Drop zone validation and positioning
-- Task reordering within columns
-- Cross-column task movement
+#### **Authentication System** (`backend/routers/auth.py`)
+- **Purpose**: User login, session management, security
+- **Features**: JWT tokens, password hashing, role-based permissions
+- **Security**: bcrypt password hashing, secure session management
 
-**Key Functions:**
-- [`getDragAfterElement()`](kanban-board/script.js:422) - Determines drop position
-- Event listeners for `dragstart`, `dragover`, `drop` events
-- Visual state management during drag operations
+#### **Task Management** (`backend/routers/tasks.py`)
+- **Purpose**: Core task operations (create, read, update, delete, move)
+- **Features**: Permission checking, task validation, status updates
+- **Integration**: Real-time WebSocket notifications
 
-### 3. Storage Management
+#### **WebSocket Manager** (`backend/websocket_manager.py`)
+- **Purpose**: Real-time communication between users
+- **Features**: Live task updates, user notifications, connection management
+- **Benefits**: Instant collaboration without page refreshes
 
-**Responsibilities:**
-- Data serialization/deserialization
-- localStorage interaction
-- Data migration and versioning
-- Backup and recovery operations
+#### **Guest Services** (`backend/routers/guest.py`)
+- **Purpose**: Public API for client task lookup
+- **Features**: Task status by ID, no authentication required
+- **Security**: Read-only access, rate limiting
 
-**Storage Schema:**
-```javascript
-// localStorage key: 'allTasks'
-[
-  {
-    id: "uuid-string",
-    clientName: "Client Name",
-    type: "BDL|SDL|nBDL|nPO|Misc|Misc - CustomType",
-    address: "Optional address",
-    processing: "normal|expedited",
-    status: "todo|in-review|awaiting-documents|done",
-    createdAt: timestamp
-  }
-]
-```
+### Database Design
 
-### 4. Theme System
+#### **Users Table**
+- User accounts with roles (Admin, Active, Inactive)
+- Secure password storage with bcrypt
+- Full name, email, and permission settings
 
-**Responsibilities:**
-- Theme preference persistence
-- CSS custom property management
-- UI state synchronization
+#### **Tasks Table**
+- Task details (client, type, address, priority)
+- Workflow status tracking (To Do → In Review → Awaiting Documents → Done)
+- Custom ID generation (RE-XXXXXX format)
+- Audit timestamps and ownership
 
-**Implementation:**
-- CSS custom properties for color theming
-- localStorage preference storage
-- Automatic theme application on load
-
-### 5. History Management
-
-**Responsibilities:**
-- Deletion tracking for undo functionality
-- State restoration for redo operations
-- History stack management
-
-**Data Structures:**
-```javascript
-const deletedTasks = []; // Undo stack
-const restoredTasks = []; // Redo stack
-```
+#### **Session Management**
+- JWT token validation
+- Session tracking and security
+- User activity monitoring
 
 ## Data Flow
 
-### Task Creation Flow
+### User Authentication Flow
 ```mermaid
 sequenceDiagram
     participant User
-    participant UI as UI Layer
-    participant TaskMgr as Task Manager
-    participant Storage as Storage Manager
-    participant DOM as DOM Renderer
-
-    User->>UI: Click "Add Task"
-    UI->>UI: showTaskPanel()
-    User->>UI: Fill form & submit
-    UI->>TaskMgr: validateTaskData()
-    TaskMgr->>TaskMgr: generateTaskId()
-    TaskMgr->>Storage: saveTask()
-    Storage->>Storage: updateLocalStorage()
-    Storage-->>TaskMgr: saveSuccess
-    TaskMgr->>DOM: addTaskCard()
-    DOM-->>UI: renderComplete
-    UI-->>User: Show new task
+    participant Frontend
+    participant Backend
+    participant Database
+    
+    User->>Frontend: Enter credentials
+    Frontend->>Backend: POST /auth/login
+    Backend->>Database: Verify user & password
+    Database-->>Backend: User data
+    Backend->>Backend: Generate JWT token
+    Backend-->>Frontend: Return token & user info
+    Frontend->>Frontend: Store token & redirect to app
+    Frontend-->>User: Show task board
 ```
 
-### Drag & Drop Flow
+### Real-time Task Updates
 ```mermaid
 sequenceDiagram
-    participant User
-    participant DragSys as Drag System
-    participant TaskMgr as Task Manager
-    participant Storage as Storage Manager
-
-    User->>DragSys: Start drag
-    DragSys->>DragSys: setDragState()
-    User->>DragSys: Drop on column
-    DragSys->>DragSys: calculateDropPosition()
-    DragSys->>TaskMgr: updateTaskStatus()
-    TaskMgr->>Storage: saveTaskUpdate()
-    Storage->>Storage: updateLocalStorage()
-    Storage-->>TaskMgr: updateSuccess
-    TaskMgr->>DragSys: reorderTasks()
-    DragSys-->>User: Visual update complete
+    participant User1 as Staff User 1
+    participant User2 as Staff User 2
+    participant Backend
+    participant Database
+    
+    User1->>Backend: Move task to "In Review"
+    Backend->>Database: Update task status
+    Database-->>Backend: Confirm update
+    Backend->>Backend: Broadcast via WebSocket
+    Backend-->>User1: Update confirmation
+    Backend-->>User2: Real-time task update
+    User2->>User2: UI updates automatically
 ```
 
-## Data Models
-
-### Task Model
-```typescript
-interface Task {
-  id: string;                    // UUID v4
-  clientName: string;            // Required, client identifier
-  type: TaskType;               // BDL, SDL, nBDL, nPO, or Misc variants
-  address?: string;             // Optional property address
-  processing: 'normal' | 'expedited';
-  status: 'todo' | 'in-review' | 'awaiting-documents' | 'done';
-  createdAt: number;            // Unix timestamp
-}
-
-type TaskType = 'BDL' | 'SDL' | 'nBDL' | 'nPO' | 'Misc' | `Misc - ${string}`;
+### Client Task Lookup
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Frontend
+    participant Backend
+    participant Database
+    
+    Client->>Frontend: Enter task ID (RE-XXXXXX)
+    Frontend->>Backend: GET /guest/task-status/{id}
+    Backend->>Database: Query task by custom_id
+    Database-->>Backend: Task status & details
+    Backend-->>Frontend: Status message
+    Frontend-->>Client: Display current status
 ```
 
-### Storage Structure
-```javascript
-// localStorage keys and their data types
-{
-  'allTasks': Task[],           // Primary task storage
-  'theme': 'light' | 'dark'     // Theme preference
-}
+## User Experience
+
+### Staff Workflow
+1. **Login**: Secure authentication with role-based access
+2. **Dashboard**: View all tasks organized by workflow stage
+3. **Task Management**: Create, edit, move, and delete tasks
+4. **Collaboration**: See real-time updates from other team members
+5. **Client Communication**: Share task IDs for client status checking
+
+### Client Experience
+1. **Access**: Visit public lookup page (no account needed)
+2. **Search**: Enter task ID received from staff
+3. **Status**: View current workflow stage and details
+4. **Updates**: Return anytime to check progress
+
+### Permission Levels
+- **Admin**: Full system access, user management capabilities
+- **Active Users**: Create, edit, move, and delete tasks
+- **Inactive Users**: View-only access to all tasks
+- **Guests/Clients**: Public task status lookup only
+
+## Security & Authentication
+
+### Authentication Security
+```mermaid
+graph LR
+    A[User Login] --> B[Password Verification]
+    B --> C[JWT Token Generation]
+    C --> D[Token Validation]
+    D --> E[API Access Granted]
+    
+    F[Password Storage] --> G[bcrypt Hashing]
+    G --> H[Secure Database]
+    
+    style G fill:#ffcdd2
+    style C fill:#c8e6c9
+    style H fill:#fff3e0
 ```
 
-## Storage Strategy
+### Security Features
+- **HTTPS Only**: All communication encrypted in transit
+- **JWT Tokens**: Secure, stateless session management
+- **bcrypt Hashing**: Industry-standard password protection
+- **Role-based Access**: Granular permission control
+- **Input Validation**: Prevents injection attacks and data corruption
 
-### Data Persistence
-- **Primary Storage**: Browser localStorage for task data
-- **Backup Strategy**: Data redundancy through task array structure
-- **Migration**: Version-aware data structure updates
+### Data Protection
+- **Database Backups**: Automatic daily backups via Render
+- **Access Logs**: Track user activity and API usage
+- **Environment Variables**: Secure configuration management
+- **CORS Policy**: Controlled cross-origin requests
 
-### Performance Optimizations
-- **Lazy Loading**: Tasks rendered on demand
-- **Batch Operations**: Multiple task updates in single localStorage write
-- **Memory Management**: Efficient DOM element reuse
+## Deployment Architecture
 
-### Data Integrity
-- **Validation**: Client-side input validation before storage
-- **Normalization**: Consistent data format enforcement
-- **Recovery**: Graceful handling of corrupted data
-
-## Event System
-
-### Event Delegation Pattern
-```javascript
-// Central event handling for task operations
-document.addEventListener('click', (event) => {
-  if (event.target.matches('.edit-task-btn')) {
-    handleTaskEdit(event);
-  } else if (event.target.matches('.delete-task-btn')) {
-    handleTaskDelete(event);
-  }
-});
+### Render Platform Services
+```mermaid
+graph TB
+    subgraph "Render Cloud"
+        subgraph "Web Service (teg-tms)"
+            A[FastAPI Application]
+            B[Static File Serving]
+            C[Health Monitoring]
+        end
+        
+        subgraph "Database Service (teg-tms-db)"
+            D[PostgreSQL Database]
+            E[Automatic Backups]
+            F[Connection Pooling]
+        end
+        
+        subgraph "Platform Services"
+            G[SSL Certificate Management]
+            H[Load Balancing]
+            I[Auto-scaling]
+        end
+    end
+    
+    J[GitHub Repository] -->|Auto Deploy| A
+    A --> D
+    G --> A
+    H --> A
+    
+    style A fill:#e8f5e9
+    style D fill:#fff3e0
+    style G fill:#ffcdd2
 ```
 
-### Drag & Drop Events
-- **dragstart**: Initialize drag state and visual feedback
-- **dragover**: Continuous position calculation and visual updates
-- **drop**: Finalize task movement and update storage
+### Deployment Process
+1. **Code Push**: Developers push changes to GitHub main branch
+2. **Auto Deploy**: Render detects changes and starts deployment
+3. **Build Process**: Install dependencies and prepare application
+4. **Health Check**: Verify application and database connectivity
+5. **Go Live**: Switch traffic to new deployment
+6. **Monitoring**: Continuous health monitoring and logging
 
-### Custom Events
-- Task state changes trigger custom events for loose coupling
-- Theme changes broadcast to all listening components
-
-## UI Architecture
-
-### CSS Architecture
-```css
-:root {
-  /* CSS Custom Properties for theming */
-  --bg-color: #e8f5e9;
-  --text-color: #2e7d32;
-  --column-bg: #f0f8f0;
-  /* ... additional theme variables */
-}
-
-[data-theme="dark"] {
-  /* Dark theme overrides */
-  --bg-color: #121212;
-  --text-color: #ffffff;
-  /* ... dark theme variables */
-}
-```
-
-### Component Styling Strategy
-- **Modular CSS**: Component-specific style blocks
-- **Theme Variables**: Consistent color scheme through custom properties
-- **Responsive Design**: Flexible layouts with CSS Grid and Flexbox
-
-### Animation & Interactions
-- **Smooth Transitions**: 0.3s ease-in-out for state changes
-- **Visual Feedback**: Hover states and drag indicators
-- **Accessibility**: Focus management and keyboard navigation
-
-## Performance Considerations
-
-### DOM Optimization
-- **Virtual Scrolling**: Large task lists handled efficiently
-- **Event Delegation**: Single event listeners for multiple elements
-- **Minimal Reflows**: Batch DOM updates to prevent layout thrashing
-
-### Memory Management
-- **Object Pooling**: Reuse task DOM elements where possible
-- **Cleanup**: Remove event listeners on element destruction
-- **Storage Limits**: Monitor localStorage usage and implement cleanup
-
-### Rendering Performance
-- **Request Animation Frame**: Smooth drag & drop animations
-- **Debounced Operations**: Limit high-frequency events
-- **Progressive Enhancement**: Core functionality without JavaScript
-
-## Security & Data Integrity
-
-### Client-Side Security
-- **Input Sanitization**: XSS prevention through proper escaping
-- **Data Validation**: Type checking and format validation
-- **Storage Encryption**: Consider implementing encryption for sensitive data
-
-### Error Handling
-```javascript
-try {
-  localStorage.setItem('allTasks', JSON.stringify(tasks));
-} catch (error) {
-  // Handle storage quota exceeded
-  handleStorageError(error);
-}
-```
-
-### Data Recovery
-- **Graceful Degradation**: Application functions with corrupted data
-- **Data Validation**: Runtime checks for data integrity
-- **Backup Mechanisms**: Export/import functionality for data portability
+### Production Benefits
+- **Zero Downtime**: Rolling deployments with health checks
+- **Automatic Scaling**: Handles traffic spikes automatically
+- **Monitoring**: Real-time performance and error tracking
+- **Backups**: Daily database backups with point-in-time recovery
+- **SSL**: Automatic certificate management and renewal
 
 ---
 
-## Development Guidelines
+## Monitoring & Maintenance
 
-### Code Organization
-- **Modular Functions**: Single responsibility principle
-- **Clear Naming**: Descriptive function and variable names
-- **Documentation**: Inline comments for complex logic
+### Health Monitoring
+- **Application Health**: `/api/v1/health` endpoint for system status
+- **Database Health**: Connection and query performance monitoring
+- **User Activity**: Track login patterns and usage statistics
 
-### Testing Considerations
-- **Manual Testing**: Cross-browser compatibility verification
-- **Data Scenarios**: Test with various task configurations
-- **Edge Cases**: Handle storage failures and corrupted data
+### Performance Optimization
+- **Database Indexing**: Optimized queries for task retrieval
+- **WebSocket Management**: Efficient real-time connection handling
+- **Static File Caching**: Optimized frontend asset delivery
+- **Connection Pooling**: Efficient database resource usage
 
-### Future Enhancements
-- **Backend Integration**: RESTful API for server-side persistence
-- **Real-time Collaboration**: WebSocket integration for multi-user support
-- **Advanced Filtering**: Search and filter capabilities
-- **Analytics Dashboard**: Task completion metrics and reporting
+### Maintenance Tasks
+- **User Management**: Add/remove users via database scripts
+- **Database Cleanup**: Archive old completed tasks
+- **Security Updates**: Regular dependency updates
+- **Performance Monitoring**: Track response times and resource usage
+
+## Future Enhancements
+
+### Planned Features
+- **User Management UI**: Web interface for admin user management
+- **Advanced Reporting**: Task completion analytics and dashboards
+- **Email Notifications**: Automated status updates to clients
+- **Mobile Application**: Native mobile app for field staff
+- **Document Management**: File upload and attachment support
+
+### Scalability Improvements
+- **Caching Layer**: Redis for improved performance
+- **CDN Integration**: Faster global content delivery
+- **Database Optimization**: Advanced indexing and query optimization
+- **Multi-region Deployment**: Geographic distribution for better performance
