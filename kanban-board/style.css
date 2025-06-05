@@ -590,7 +590,7 @@ h1 {
     border-radius: 12px;
     font-size: 0.8em;
     color: white;
-    margin: 3px 0;
+    margin: 3px 6px 3px 0;
 }
 
 .task-labels {
@@ -837,6 +837,7 @@ h1 {
 
 .task-address {
     margin-top: 8px;
+    margin-bottom: 12px;
     font-size: 0.9em;
     color: var(--text-color);
     white-space: pre-line;
