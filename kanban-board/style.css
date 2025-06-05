@@ -564,21 +564,18 @@ h1 {
 .task-custom-id {
     font-family: 'Courier New', monospace;
     font-weight: 700;
-    font-size: 11px;
+    font-size: 18px;
     color: #1b5e20;
     margin: 0;
-    padding: 3px 8px;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 4px;
+    padding: 0;
+    background: none;
+    border: none;
     display: inline-block;
-    border: 1px solid rgba(46, 125, 50, 0.3);
     align-self: center;
 }
 
 [data-theme="dark"] .task-custom-id {
-    color: #c8e6c9;
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(200, 230, 201, 0.3);
+    color: white;
 }
 
 .task-client {
