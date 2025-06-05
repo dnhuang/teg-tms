@@ -565,19 +565,20 @@ h1 {
     font-family: 'Courier New', monospace;
     font-weight: 700;
     font-size: 11px;
-    color: #2e7d32;
-    margin-bottom: 4px;
-    padding: 2px 6px;
-    background: rgba(46, 125, 50, 0.1);
+    color: #1b5e20;
+    margin: 0;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.7);
     border-radius: 4px;
     display: inline-block;
-    border: 1px solid rgba(46, 125, 50, 0.2);
+    border: 1px solid rgba(46, 125, 50, 0.3);
+    align-self: center;
 }
 
 [data-theme="dark"] .task-custom-id {
-    color: #81c784;
-    background: rgba(129, 199, 132, 0.1);
-    border-color: rgba(129, 199, 132, 0.2);
+    color: #c8e6c9;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(200, 230, 201, 0.3);
 }
 
 .task-client {
@@ -638,13 +639,14 @@ h1 {
     background-color: #7b1fa2;
 }
 
-/* New top section for buttons */
+/* New top section for ID and buttons */
 .task-top-section {
     width: calc(100% + 20px);
     margin: -10px -10px 10px -10px;
     padding: 8px 10px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     min-height: 24px;
     border: 1px solid #a5d6a7;
     border-bottom: 2px solid #66bb6a;

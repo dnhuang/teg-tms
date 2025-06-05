@@ -622,11 +622,18 @@ function createTaskElement(task) {
     taskDiv.dataset.taskId = task.id;
     taskDiv.dataset.createdAt = task.created_at; // Store creation time for sorting
     
-    // Create top section for buttons (only for active users)
+    // Create top section with ID on left and buttons on right
+    const topSection = document.createElement('div');
+    topSection.className = 'task-top-section';
+    
+    // Add custom ID to the left side of top section
+    const customIdDiv = document.createElement('div');
+    customIdDiv.className = 'task-custom-id';
+    customIdDiv.textContent = task.custom_id ? `#RE-${task.custom_id}` : `#${task.id}`;
+    topSection.appendChild(customIdDiv);
+    
+    // Create button container for right side (only for active users)
     if (currentUser && currentUser.is_active) {
-        const topSection = document.createElement('div');
-        topSection.className = 'task-top-section';
-        
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'task-button-container';
         
@@ -651,22 +658,18 @@ function createTaskElement(task) {
         buttonContainer.appendChild(editButton);
         buttonContainer.appendChild(deleteButton);
         topSection.appendChild(buttonContainer);
-        taskDiv.appendChild(topSection);
     }
     
-    // Create task content with custom ID
+    taskDiv.appendChild(topSection);
+    
+    // Create task header with just client name (custom ID moved to top)
     const taskHeaderDiv = document.createElement('div');
     taskHeaderDiv.className = 'task-header';
-    
-    const customIdDiv = document.createElement('div');
-    customIdDiv.className = 'task-custom-id';
-    customIdDiv.textContent = task.custom_id ? `#RE-${task.custom_id}` : `#${task.id}`;
     
     const clientDiv = document.createElement('div');
     clientDiv.className = 'task-client';
     clientDiv.textContent = task.client_name;
     
-    taskHeaderDiv.appendChild(customIdDiv);
     taskHeaderDiv.appendChild(clientDiv);
     
     const labelsDiv = document.createElement('div');
