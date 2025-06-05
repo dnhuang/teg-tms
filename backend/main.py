@@ -113,7 +113,7 @@ async def shutdown_event():
     engine.dispose()
 
 
-# Health check endpoint
+# Health check endpoints
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -122,6 +122,33 @@ async def health_check():
         "service": settings.app_name,
         "version": "1.0.0"
     }
+
+@app.get("/api/v1/health")
+async def api_health_check():
+    """API health check endpoint for Render"""
+    try:
+        # Test database connection
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        
+        return {
+            "status": "healthy",
+            "service": settings.app_name,
+            "version": "1.0.0",
+            "database": "connected"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "service": settings.app_name,
+                "version": "1.0.0",
+                "database": "disconnected",
+                "error": str(e)
+            }
+        )
 
 
 # Root endpoint
