@@ -13,7 +13,7 @@ from backend.config import settings
 def main():
     """Main startup function for Render deployment"""
     
-    print("🚀 Starting Entrust RE Kanban application...")
+    print("🚀 Starting TEG Task Management System...")
     print(f"Environment: {settings.environment}")
     print(f"Database URL: {settings.database_url[:20]}...")
     

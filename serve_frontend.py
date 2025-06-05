@@ -10,7 +10,7 @@ import webbrowser
 from pathlib import Path
 
 # Set the directory to serve
-os.chdir('kanban-board')
+os.chdir('frontend')
 
 PORT = 3000
 

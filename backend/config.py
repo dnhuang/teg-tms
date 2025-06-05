@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     
     # Application
-    app_name: str = "Entrust RE Kanban API"
+    app_name: str = "TEG Task Management System API"
     debug: bool = False
     
     def __init__(self, **kwargs):

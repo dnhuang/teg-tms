@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
-    description="A FastAPI backend for multiuser Kanban board management in real estate processing",
+    description="TEG Task Management System - A FastAPI backend for multiuser task management in real estate processing",
     version="1.0.0",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
@@ -86,7 +86,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and perform startup tasks"""
-    logger.info("Starting up Entrust RE Kanban API...")
+    logger.info("Starting up TEG Task Management System API...")
     
     try:
         # Create database tables
@@ -109,7 +109,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup tasks on shutdown"""
-    logger.info("Shutting down Entrust RE Kanban API...")
+    logger.info("Shutting down TEG Task Management System API...")
     engine.dispose()
 
 
@@ -156,7 +156,7 @@ async def api_health_check():
 async def root():
     """Root endpoint with API information"""
     return {
-        "message": "Welcome to Entrust RE Kanban API",
+        "message": "Welcome to TEG Task Management System API",
         "version": "1.0.0",
         "docs": "/docs" if settings.debug else "Documentation disabled in production",
         "health": "/health"
