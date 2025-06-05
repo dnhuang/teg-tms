@@ -33,11 +33,12 @@ class Task(Base):
     __tablename__ = "tasks"
     
     id = Column(Integer, primary_key=True, index=True)
+    custom_id = Column(String(6), unique=True, nullable=False, index=True)  # 6-char alphanumeric ID
     client_name = Column(String(100), nullable=False, index=True)
     task_type = Column(String(50), nullable=False)  # BDL, SDL, nBDL, nPO, Misc, etc.
     address = Column(Text, nullable=True)
-    processing = Column(String(20), nullable=False, default="normal")  # normal, expedited
-    status = Column(String(30), nullable=False, default="todo")  # todo, in-review, awaiting-documents, done
+    processing = Column(String(20), nullable=False, default="normal", server_default="normal")  # normal, expedited
+    status = Column(String(30), nullable=False, default="todo", server_default="todo")  # todo, in-review, awaiting-documents, done
     description = Column(Text, nullable=True)
     
     # Ownership and audit

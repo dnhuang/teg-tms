@@ -6,6 +6,9 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import json
+import time
+import random
+import string
 
 from .models import User, Task, TaskHistory, UserSession
 from .auth import get_password_hash
@@ -122,7 +125,11 @@ def create_sample_tasks(db: Session, user_id: int) -> list[Task]:
     created_tasks = []
     
     for task_data in sample_tasks:
+        # Generate unique custom ID for each task
+        custom_id = generate_unique_custom_id(db)
+        
         task = Task(
+            custom_id=custom_id,
             client_name=task_data["client_name"],
             task_type=task_data["task_type"],
             address=task_data["address"],
@@ -347,3 +354,41 @@ def get_next_priority_order(db: Session, user_id: int, status: str) -> int:
     ).count()
     
     return max_priority
+
+
+def generate_unique_custom_id(db: Session, max_attempts: int = 10) -> str:
+    """
+    Generate a unique 6-character alphanumeric custom ID with collision detection
+    
+    Format: 2 timestamp digits + 4 random alphanumeric characters
+    Example: "45A7K9" (timestamp: "45", random: "A7K9")
+    
+    Args:
+        db: Database session
+        max_attempts: Maximum attempts to generate unique ID
+    
+    Returns:
+        Unique 6-character custom ID
+    
+    Raises:
+        RuntimeError: If unable to generate unique ID after max_attempts
+    """
+    chars = string.ascii_uppercase + string.digits  # A-Z, 0-9
+    
+    for attempt in range(max_attempts):
+        # Use last 2 digits of timestamp (changes every ~16 minutes)
+        timestamp_part = str(int(time.time()))[-2:]
+        
+        # Add 4 random characters
+        random_part = ''.join(random.choices(chars, k=4))
+        
+        # Combine to create 6-character ID
+        custom_id = f"{timestamp_part}{random_part}"
+        
+        # Check for collision
+        existing_task = db.query(Task).filter(Task.custom_id == custom_id).first()
+        if not existing_task:
+            return custom_id
+    
+    # Fallback to pure random if somehow all attempts collide
+    return ''.join(random.choices(chars, k=6))

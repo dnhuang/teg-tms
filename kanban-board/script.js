@@ -654,10 +654,20 @@ function createTaskElement(task) {
         taskDiv.appendChild(topSection);
     }
     
-    // Create task content
+    // Create task content with custom ID
+    const taskHeaderDiv = document.createElement('div');
+    taskHeaderDiv.className = 'task-header';
+    
+    const customIdDiv = document.createElement('div');
+    customIdDiv.className = 'task-custom-id';
+    customIdDiv.textContent = task.custom_id ? `#RE-${task.custom_id}` : `#${task.id}`;
+    
     const clientDiv = document.createElement('div');
     clientDiv.className = 'task-client';
     clientDiv.textContent = task.client_name;
+    
+    taskHeaderDiv.appendChild(customIdDiv);
+    taskHeaderDiv.appendChild(clientDiv);
     
     const labelsDiv = document.createElement('div');
     labelsDiv.className = 'task-labels';
@@ -680,7 +690,7 @@ function createTaskElement(task) {
     addressDiv.className = 'task-address';
     addressDiv.textContent = task.address || '';
     
-    taskDiv.appendChild(clientDiv);
+    taskDiv.appendChild(taskHeaderDiv);
     taskDiv.appendChild(labelsDiv);
     if (task.address) {
         taskDiv.appendChild(addressDiv);

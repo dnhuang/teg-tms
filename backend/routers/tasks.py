@@ -12,6 +12,7 @@ from ..models import Task, User, TaskHistory
 from ..schemas import TaskCreate, TaskResponse, TaskUpdate
 from ..auth import get_current_user
 from ..websocket_manager import manager
+from ..utils import generate_unique_custom_id
 
 router = APIRouter()
 
@@ -58,14 +59,26 @@ async def create_task(
             detail="Inactive users cannot create tasks"
         )
     
+    # Generate unique custom ID
+    custom_id = generate_unique_custom_id(db)
+    
+    # Get task data and ensure defaults are set
+    task_data = task.dict()
+    
     # Count existing tasks in the same column for priority ordering
     task_count = db.query(Task).filter(
-        Task.status == task.status
+        Task.status == task_data.get('status', 'todo')
     ).count()
     
-    # Create new task
+    # Create new task with explicit field assignment to avoid dict unpacking issues
     db_task = Task(
-        **task.dict(),
+        custom_id=custom_id,
+        client_name=task_data['client_name'],
+        task_type=task_data['task_type'],
+        address=task_data.get('address'),
+        processing=task_data.get('processing', 'normal'),
+        status=task_data.get('status', 'todo'),
+        description=task_data.get('description'),
         owner_id=current_user.id,
         priority_order=task_count
     )
@@ -94,6 +107,7 @@ async def create_task(
     # Broadcast task creation to all connected users
     task_data = {
         "id": db_task.id,
+        "custom_id": db_task.custom_id,
         "client_name": db_task.client_name,
         "task_type": db_task.task_type,
         "address": db_task.address,
@@ -259,6 +273,7 @@ async def update_task(
     # Broadcast task update to all connected users
     task_data = {
         "id": task.id,
+        "custom_id": task.custom_id,
         "client_name": task.client_name,
         "task_type": task.task_type,
         "address": task.address,
@@ -414,6 +429,7 @@ async def move_task(
     # Broadcast task move to all connected users
     task_data = {
         "id": task.id,
+        "custom_id": task.custom_id,
         "client_name": task.client_name,
         "task_type": task.task_type,
         "address": task.address,

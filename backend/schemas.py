@@ -105,6 +105,7 @@ class TaskOwner(BaseModel):
 
 class TaskResponse(TaskBase):
     id: int
+    custom_id: str
     owner_id: int
     owner: Optional[TaskOwner] = None
     created_at: datetime
