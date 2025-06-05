@@ -204,6 +204,74 @@ body {
     margin: 0;
 }
 
+/* ===== GUEST LOGIN SECTION ===== */
+.guest-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--task-border);
+    text-align: center;
+}
+
+.guest-divider {
+    position: relative;
+    margin-bottom: 20px;
+    color: var(--text-color);
+    opacity: 0.5;
+    font-size: 0.9rem;
+}
+
+.guest-divider span {
+    background-color: var(--task-bg);
+    padding: 0 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.guest-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--task-border);
+    z-index: 0;
+}
+
+.guest-login-button {
+    background: none;
+    color: var(--text-color);
+    border: 2px solid var(--task-border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.guest-login-button:hover {
+    border-color: var(--button-bg);
+    color: var(--button-bg);
+    background-color: rgba(102, 187, 106, 0.05);
+}
+
+.guest-help-text {
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .guest-login-button:hover {
+    border-color: #777777;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 /* ===== USER BAR STYLES (FIXED RESPONSIVE) ===== */
 .user-bar {
     width: 100%;
@@ -1092,4 +1160,310 @@ h1 {
     background-color: #3e2723;
     color: #ffb74d;
     border-left-color: #f57c00;
+}
+
+/* ===== GUEST LOOKUP STYLES ===== */
+.guest-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(135deg, var(--bg-color) 0%, var(--column-bg) 100%);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.guest-lookup-box {
+    background-color: var(--task-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 100%;
+    max-width: 450px;
+    border: 1px solid var(--column-border);
+}
+
+.guest-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.guest-header h1 {
+    color: var(--text-color);
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.guest-header p {
+    color: var(--text-color);
+    margin: 0;
+    opacity: 0.7;
+    font-size: 1rem;
+}
+
+.guest-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.guest-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guest-form .form-group label {
+    color: var(--text-color);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.guest-form input[type="text"] {
+    padding: 14px 16px;
+    border: 2px solid var(--task-border);
+    border-radius: 8px;
+    background-color: var(--column-bg);
+    color: var(--text-color);
+    font-size: 1.1rem;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-align: center;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.guest-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--button-bg);
+    box-shadow: 0 0 0 3px rgba(102, 187, 106, 0.2);
+}
+
+.input-help {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    opacity: 0.6;
+    text-align: center;
+    margin-top: 4px;
+}
+
+.lookup-button {
+    background-color: var(--button-bg);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    min-height: 56px;
+}
+
+.lookup-button:hover:not(:disabled) {
+    background-color: var(--button-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.lookup-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.guest-footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--task-border);
+}
+
+.guest-footer p {
+    color: var(--text-color);
+    opacity: 0.6;
+    font-size: 0.9rem;
+    margin: 0 0 15px 0;
+}
+
+.back-to-login-btn {
+    background: none;
+    color: var(--text-color);
+    border: 1px solid var(--task-border);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+}
+
+.back-to-login-btn:hover {
+    opacity: 1;
+    border-color: var(--button-bg);
+    color: var(--button-bg);
+}
+
+/* ===== STATUS MODAL STYLES ===== */
+.status-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.status-modal-content {
+    background-color: var(--task-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    border: 1px solid var(--column-border);
+    animation: slideUp 0.3s ease-out;
+}
+
+.status-header {
+    padding: 24px 24px 16px 24px;
+    border-bottom: 1px solid var(--task-border);
+    text-align: center;
+}
+
+.status-header h2 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.status-body {
+    padding: 24px;
+    text-align: center;
+}
+
+.task-id-display {
+    background: var(--column-bg);
+    color: var(--text-color);
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    font-size: 1.3rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--task-border);
+    letter-spacing: 1px;
+}
+
+.status-message {
+    color: var(--text-color);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+.status-footer {
+    padding: 16px 24px 24px 24px;
+    text-align: center;
+}
+
+.status-ok-btn {
+    background-color: var(--button-bg);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 32px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 100px;
+}
+
+.status-ok-btn:hover {
+    background-color: var(--button-hover);
+    transform: translateY(-1px);
+}
+
+/* Dark mode adjustments for guest interface */
+[data-theme="dark"] .lookup-button {
+    background-color: #1a1a1a;
+    border: 2px solid #666666;
+}
+
+[data-theme="dark"] .lookup-button:hover:not(:disabled) {
+    background-color: #2a2a2a;
+    border-color: #777777;
+}
+
+[data-theme="dark"] .lookup-button:disabled {
+    background-color: #111111;
+    border-color: #333333;
+}
+
+[data-theme="dark"] .status-ok-btn {
+    background-color: #1a1a1a;
+    border: 2px solid #666666;
+}
+
+[data-theme="dark"] .status-ok-btn:hover {
+    background-color: #2a2a2a;
+    border-color: #777777;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for guest interface */
+@media (max-width: 480px) {
+    .guest-lookup-box {
+        padding: 30px 20px;
+        margin: 10px;
+    }
+    
+    .guest-header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .status-modal-content {
+        margin: 20px;
+        width: calc(100% - 40px);
+    }
+    
+    .status-body,
+    .status-header,
+    .status-footer {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
 }

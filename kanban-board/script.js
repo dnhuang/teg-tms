@@ -59,6 +59,14 @@ function setupEventListeners() {
         logoutButton.addEventListener('click', handleLogout);
     }
 
+    // Guest login button
+    const guestLoginButton = document.getElementById('guest-login-button');
+    if (guestLoginButton) {
+        guestLoginButton.addEventListener('click', function() {
+            window.location.href = 'guest-lookup.html';
+        });
+    }
+
     // Add task button - only for active users
     const addTaskButton = document.getElementById('add-task-button');
     if (addTaskButton) {

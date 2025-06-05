@@ -13,7 +13,7 @@ import uvicorn
 
 from .config import settings
 from .database import create_tables, engine
-from .routers import auth, tasks, websocket
+from .routers import auth, tasks, websocket, guest
 
 # Configure logging
 logging.basicConfig(
@@ -140,6 +140,7 @@ async def root():
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(websocket.router, prefix="/api/v1/ws", tags=["websocket"])
+app.include_router(guest.router, prefix="/api/v1/guest", tags=["guest"])
 
 
 # Development server runner

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Status Lookup - Entrust RE</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+    <div class="guest-container">
+        <div class="guest-lookup-box">
+            <div class="guest-header">
+                <h1>Task Status Lookup</h1>
+                <p>Enter your task ID to check the current status</p>
+            </div>
+            
+            <form id="guest-lookup-form" class="guest-form">
+                <div class="form-group">
+                    <label for="task-id">Task ID</label>
+                    <input
+                        type="text"
+                        id="task-id"
+                        name="task-id"
+                        placeholder="RE-XXXXXX"
+                        maxlength="9"
+                        pattern="RE-[A-Za-z0-9]{6}"
+                        required
+                        autocomplete="off"
+                    >
+                    <small class="input-help">Enter your 9-character task ID (e.g., RE-41G40X)</small>
+                </div>
+                
+                <button type="submit" class="lookup-button" id="lookup-btn">
+                    <span class="button-text">Check Status</span>
+                    <span class="button-loader" style="display: none;">⟳</span>
+                </button>
+                
+                <div id="error-message" class="error-message" style="display: none;"></div>
+            </form>
+            
+            <div class="guest-footer">
+                <p>Need help? Contact our office for assistance.</p>
+                <button type="button" class="back-to-login-btn" onclick="window.location.href='index.html'">
+                    ← Back to Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div id="status-modal" class="status-modal" style="display: none;">
+        <div class="status-modal-content">
+            <div class="status-header">
+                <h2>Task Status</h2>
+            </div>
+            <div class="status-body">
+                <div class="task-id-display" id="modal-task-id"></div>
+                <div class="status-message" id="modal-status-message"></div>
+            </div>
+            <div class="status-footer">
+                <button type="button" class="status-ok-btn" id="status-ok-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="guest-lookup.js"></script>
+</body>
+</html>
