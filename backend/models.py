@@ -53,6 +53,8 @@ class Task(Base):
     
     # Relationships
     owner = relationship("User", back_populates="tasks")
+    # Add relationship to task history with cascade delete
+    history = relationship("TaskHistory", back_populates="task", cascade="all, delete-orphan")
 
 
 class TaskHistory(Base):
@@ -61,7 +63,7 @@ class TaskHistory(Base):
     __tablename__ = "task_history"
     
     id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     action = Column(String(50), nullable=False)  # created, updated, deleted, moved
     old_values = Column(Text, nullable=True)  # JSON string of old values
@@ -69,7 +71,7 @@ class TaskHistory(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
-    task = relationship("Task")
+    task = relationship("Task", back_populates="history")
     user = relationship("User")
 
 
