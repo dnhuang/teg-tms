@@ -2,14 +2,14 @@
 
 A comprehensive task management system designed specifically for real estate processing workflows at The Entrust Group. Built with FastAPI backend, PostgreSQL database, and modern JavaScript frontend.
 
-## 🌐 Live Application
+## Live Application
 
 ### **Production Access:**
 - **Staff Portal**: https://teg-tms.onrender.com/
 - **Client Lookup**: https://teg-tms.onrender.com/guest-lookup.html
 - **API Health**: https://teg-tms.onrender.com/api/v1/health
 
-## 🚀 Features
+## Features
 
 ### Task Management
 - **Real Estate Task Types**: BDL, SDL, nBDL, nPO, and custom Misc categories
@@ -32,7 +32,6 @@ A comprehensive task management system designed specifically for real estate pro
 ### Client Experience
 - **Guest Task Lookup**: Clients can check task status using RE-XXXXXX IDs
 - **No Login Required**: Simple status checking without account creation
-- **Professional Interface**: Clean, branded experience for client interactions
 
 ### Data Management
 - **PostgreSQL Database**: Production-grade data persistence
@@ -40,20 +39,13 @@ A comprehensive task management system designed specifically for real estate pro
 - **Automatic Backups**: Database backups and redundancy
 - **FIFO Ordering**: Tasks ordered by priority (expedited first) then creation time
 
-## 🏗️ Technology Stack
+## Technology Stack
 
 ### Production Stack
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
 - **Backend**: FastAPI (Python)
 - **Database**: PostgreSQL
 - **Security**: HTTPS, JWT tokens, bcrypt password hashing
-
-### Key Components
-- **Authentication System**: Secure user management with JWT
-- **WebSocket Manager**: Real-time updates and notifications
-- **Task Engine**: CRUD operations with permission checking
-- **Guest API**: Public endpoint for task status lookup
-- **Static File Server**: Integrated frontend serving
 
 ## 📁 Project Structure
 
@@ -92,7 +84,7 @@ teg-tms/
     └── guest-lookup.js         # Guest lookup functionality
 ```
 
-## 🎯 Usage Guide
+## Usage Guide
 
 ### For Staff Members
 
@@ -130,7 +122,7 @@ teg-tms/
 3. View current status and stage information
 4. No account or login required
 
-## 💻 Development
+## Development
 
 ### Local Development Setup
 
@@ -211,78 +203,7 @@ When running in development mode (`DEBUG=true`), API documentation is available 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-## 🔧 Database Setup
-
-### User Management
-
-Users can be managed through:
-- **Database scripts**: Use provided Python/SQL scripts
-- **Direct database access**: PostgreSQL admin tools
-- **Future enhancement**: Web-based admin interface
-
-## 📊 System Monitoring
-
-### Health Checks
-- **Application**: https://teg-tms.onrender.com/api/v1/health
-- **Local Development**: http://localhost:8000/api/v1/health
-
-### Performance
-- **Response Time**: Optimized for <500ms typical operations
-- **Concurrent Users**: Supports multiple simultaneous users
-- **Real-time Updates**: WebSocket connections for live collaboration
-
-## 🔒 Security
-
-### Authentication & Authorization
-- **JWT Tokens**: Secure session management
-- **bcrypt Hashing**: Industry-standard password protection
-- **Role-based Access**: Granular permission control
-- **HTTPS**: All communication encrypted
-
-### Data Protection
-- **Input Validation**: All user inputs sanitized
-- **SQL Injection Prevention**: Parameterized queries with SQLAlchemy
-- **XSS Protection**: Content Security Policy headers
-- **CORS Configuration**: Controlled cross-origin requests
-
-## 🚀 Key Files
-
-### Backend Core Files
-- **`backend/main.py`**: FastAPI application setup and configuration
-- **`backend/models.py`**: Database models (User, Task, TaskHistory)
-- **`backend/auth.py`**: Authentication utilities and JWT handling
-- **`backend/routers/tasks.py`**: Task CRUD operations and business logic
-- **`backend/websocket_manager.py`**: Real-time communication management
-
-### Frontend Core Files
-- **`frontend/index.html`**: Main application interface and structure
-- **`frontend/script.js`**: Task management logic and API integration
-- **`frontend/guest-lookup.html`**: Client self-service interface
-- **`frontend/style.css`**: Responsive design and theming
-
-### Configuration Files
-- **`requirements.txt`**: Python package dependencies
-- **`render.yaml`**: Cloud deployment configuration
-- **`.env.example`**: Environment variable template
-- **`render_start.py`**: Production startup script
-
-## 🤝 Support & Maintenance
-
-### Getting Help
-- **Technical Issues**: Check application health endpoints and logs
-- **User Questions**: Refer to this documentation
-- **Feature Requests**: Contact system administrator
-
-### Maintenance Tasks
-- **User Management**: Use provided scripts for user creation/management
-- **Database Maintenance**: Regular backups and performance monitoring
-- **Security Updates**: Keep dependencies updated and monitor for vulnerabilities
-
-## 📖 Documentation
+## Documentation
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: System design and technical details
 - **API Documentation**: Available at `/docs` endpoint in development mode
-
-## 📄 License
-
-Proprietary software for The Entrust Group internal use.
